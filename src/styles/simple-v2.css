@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Additional global styles for v2 */
+body {
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Print-specific styles */
+@media print {
+  /* Hide everything in the app by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Make only the printable receipt and its contents visible */
+  .printable-receipt, .printable-receipt * {
+    visibility: visible;
+  }
+
+  /* Position the receipt at the top-left of the printed page */
+  .printable-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
