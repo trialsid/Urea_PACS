@@ -20,7 +20,7 @@ interface OrdersListProps {
 
 const OrdersList: React.FC<OrdersListProps> = ({ orders, onBack, onSelectOrder }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
   const [sortBy, setSortBy] = useState<'created_at' | 'farmer_name' | 'total_amount' | 'farmer_village'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -31,10 +31,13 @@ const OrdersList: React.FC<OrdersListProps> = ({ orders, onBack, onSelectOrder }
         order.farmer_village.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.farmer_aadhaar.includes(searchTerm);
 
-      const matchesDate = selectedDate === '' || 
-        new Date(order.created_at).toISOString().split('T')[0] === selectedDate;
+      const orderDate = new Date(order.created_at).toISOString().split('T')[0];
+      const matchesDateRange = (
+        (dateRange.startDate === '' || orderDate >= dateRange.startDate) &&
+        (dateRange.endDate === '' || orderDate <= dateRange.endDate)
+      );
 
-      return matchesSearch && matchesDate;
+      return matchesSearch && matchesDateRange;
     });
 
     return filtered.sort((a, b) => {
@@ -59,7 +62,7 @@ const OrdersList: React.FC<OrdersListProps> = ({ orders, onBack, onSelectOrder }
 
       return sortOrder === 'asc' ? comparison : -comparison;
     });
-  }, [orders, searchTerm, selectedDate, sortBy, sortOrder]);
+  }, [orders, searchTerm, dateRange, sortBy, sortOrder]);
 
   const handleSort = (column: typeof sortBy) => {
     if (sortBy === column) {
@@ -97,6 +100,62 @@ const OrdersList: React.FC<OrdersListProps> = ({ orders, onBack, onSelectOrder }
     const today = new Date().toISOString().split('T')[0];
     return orders.filter(order => new Date(order.created_at).toISOString().split('T')[0] === today).length;
   }, [orders]);
+
+  const generateCSV = () => {
+    const headers = ['Order ID', 'Farmer Name', 'Aadhaar', 'Village', 'Quantity (bags)', 'Unit Price (₹)', 'Total Amount (₹)', 'Date', 'Time'];
+    
+    const csvData = filteredAndSortedOrders.map(order => {
+      const { date, time } = formatDateTime(order.created_at);
+      return [
+        order.id,
+        order.farmer_name,
+        order.farmer_aadhaar,
+        order.farmer_village,
+        order.quantity,
+        order.unit_price,
+        order.total_amount,
+        date,
+        time
+      ];
+    });
+
+    const csvContent = [headers, ...csvData]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+
+    return csvContent;
+  };
+
+  const exportToCSV = () => {
+    const csvContent = generateCSV();
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    // Generate filename with date range
+    let filename = 'urea_orders';
+    if (dateRange.startDate && dateRange.endDate) {
+      filename += `_${dateRange.startDate}_to_${dateRange.endDate}`;
+    } else if (dateRange.startDate) {
+      filename += `_from_${dateRange.startDate}`;
+    } else if (dateRange.endDate) {
+      filename += `_until_${dateRange.endDate}`;
+    } else {
+      const today = new Date().toISOString().split('T')[0];
+      filename += `_all_${today}`;
+    }
+    filename += '.csv';
+
+    // Create and trigger download
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
 
   const SortIcon = ({ column }: { column: typeof sortBy }) => {
     if (sortBy !== column) {
@@ -165,22 +224,47 @@ const OrdersList: React.FC<OrdersListProps> = ({ orders, onBack, onSelectOrder }
               />
             </div>
           </div>
-          <div className="sm:w-48">
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            />
+          <div className="flex gap-2">
+            <div className="relative">
+              <input
+                type="date"
+                value={dateRange.startDate}
+                onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                placeholder="From date"
+                className="w-40 px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              />
+              <label className="absolute -top-2 left-2 px-1 bg-white text-xs text-neutral-600">From</label>
+            </div>
+            <div className="relative">
+              <input
+                type="date"
+                value={dateRange.endDate}
+                onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                placeholder="To date"
+                className="w-40 px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              />
+              <label className="absolute -top-2 left-2 px-1 bg-white text-xs text-neutral-600">To</label>
+            </div>
           </div>
-          {selectedDate && (
+          {(dateRange.startDate || dateRange.endDate) && (
             <button
-              onClick={() => setSelectedDate('')}
+              onClick={() => setDateRange({ startDate: '', endDate: '' })}
               className="px-3 py-2 text-neutral-600 hover:text-neutral-900 border border-neutral-300 rounded-lg hover:border-neutral-400 transition-colors"
             >
-              Clear Date
+              Clear Dates
             </button>
           )}
+          <button
+            onClick={exportToCSV}
+            disabled={filteredAndSortedOrders.length === 0}
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-neutral-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            title={filteredAndSortedOrders.length === 0 ? 'No orders to export' : 'Export current view to CSV'}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Export CSV
+          </button>
         </div>
       </div>
 
@@ -246,7 +330,7 @@ const OrdersList: React.FC<OrdersListProps> = ({ orders, onBack, onSelectOrder }
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                       <p>No orders found</p>
-                      {(searchTerm || selectedDate) && <p className="text-sm">Try adjusting your search criteria</p>}
+                      {(searchTerm || dateRange.startDate || dateRange.endDate) && <p className="text-sm">Try adjusting your search criteria</p>}
                     </div>
                   </td>
                 </tr>

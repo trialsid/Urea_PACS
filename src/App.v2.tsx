@@ -11,7 +11,7 @@ import OrdersList from './components/OrdersList';
 import FarmerDetail from './components/FarmerDetail';
 import OrderDetail from './components/OrderDetail';
 import ThermalReceipt from './components/ThermalReceipt';
-import { formatCurrentIndianTime, getCurrentIndianDateISO, isToday, getCurrentIndianDateTime } from './utils/dateTime';
+import { isToday, getCurrentIndianDateTime } from './utils/dateTime';
 
 function AppV2() {
   const [currentView, setCurrentView] = useState<'dashboard' | 'new-order' | 'farmers' | 'orders' | 'farmer-detail' | 'order-detail'>('dashboard');
@@ -585,7 +585,7 @@ function AppV2() {
               <div className={`transition-all duration-300 ${
                 appState.step === 'receipt' 
                   ? 'w-auto flex-shrink-0' 
-                  : appState.step === 'order-confirmation' ? 'w-auto' : 'w-full max-w-4xl'
+                  : appState.step === 'order-confirmation' ? 'w-auto max-w-lg' : 'w-full max-w-4xl'
               }`}>
                 {/* Step Content */}
                 {appState.step === 'aadhaar-entry' && (
@@ -620,7 +620,7 @@ function AppV2() {
                 <div className={`flex-shrink-0 ${
                   appState.step === 'receipt' 
                     ? 'flex-1 min-w-80 max-w-xl' 
-                    : 'w-72'
+                    : 'w-96'
                 }`}>
                   <OrderHistoryV2 
                     orders={appState.step === 'receipt' ? allOrders : appState.orderHistory}
