@@ -75,7 +75,6 @@ export const getCurrentIndianDateTime = (): string => {
     minute: '2-digit',
     hour12: false
   });
-  console.log('Current IST time:', indianTime, 'UTC time:', now.toISOString());
   return indianTime;
 };
 
@@ -93,4 +92,11 @@ export const isToday = (date: string | Date): boolean => {
     timeZone: INDIAN_TIMEZONE
   });
   return today === dateToCheck;
+};
+
+// Convert any date to Indian timezone date string (YYYY-MM-DD format)
+export const toIndianDateISO = (date: string | Date): string => {
+  return new Date(date).toLocaleDateString('en-CA', {
+    timeZone: INDIAN_TIMEZONE
+  });
 };

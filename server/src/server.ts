@@ -109,7 +109,6 @@ app.post('/api/farmer', (req: Request, res: Response) => {
 
 // Helper function to get current Indian time as ISO string
 const getIndianTimeISO = (): string => {
-  const utcTime = new Date();
   const indianTime = new Date().toLocaleString('en-CA', {
     timeZone: 'Asia/Kolkata',
     year: 'numeric',
@@ -121,7 +120,6 @@ const getIndianTimeISO = (): string => {
     hour12: false
   }).replace(/,\s/, 'T');
   
-  console.log(`[SERVER] UTC: ${utcTime.toISOString()}, Indian: ${indianTime}`);
   return indianTime;
 };
 
@@ -230,6 +228,73 @@ app.get('/api', (req: Request, res: Response) => {
 // Health check
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Get counts for real-time change detection
+app.get('/api/counts', (req: Request, res: Response) => {
+  db.all(`
+    SELECT 
+      (SELECT COUNT(*) FROM farmers) as farmers,
+      (SELECT COUNT(*) FROM orders) as orders,
+      (SELECT MAX(id) FROM orders) as lastOrderId
+  `, [], (err, rows: any[]) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+    const counts = rows[0] || { farmers: 0, orders: 0, lastOrderId: null };
+    res.json(counts);
+  });
+});
+
+// Get orders since a specific ID (for real-time updates)
+app.get('/api/orders/since/:lastId', (req: Request, res: Response) => {
+  const lastId = parseInt(req.params.lastId);
+  
+  if (isNaN(lastId)) {
+    return res.status(400).json({ error: 'Invalid lastId parameter' });
+  }
+
+  db.all(`
+    SELECT o.*, f.name as farmer_name, f.aadhaar as farmer_aadhaar, f.village as farmer_village
+    FROM orders o
+    JOIN farmers f ON o.farmer_id = f.id
+    WHERE o.id > ?
+    ORDER BY o.created_at DESC
+  `, [lastId], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+    res.json({ orders: rows || [] });
+  });
+});
+
+// Get farmers since a specific count (for real-time updates)
+app.get('/api/farmers/since/:lastCount', (req: Request, res: Response) => {
+  const lastCount = parseInt(req.params.lastCount);
+  
+  if (isNaN(lastCount)) {
+    return res.status(400).json({ error: 'Invalid lastCount parameter' });
+  }
+
+  db.all(`
+    SELECT f.*, 
+           COUNT(o.id) as total_orders,
+           COALESCE(SUM(o.total_amount), 0) as total_spent,
+           MAX(o.created_at) as last_order_date
+    FROM farmers f
+    LEFT JOIN orders o ON f.id = o.farmer_id
+    GROUP BY f.id, f.aadhaar, f.name, f.village, f.contact, f.created_at
+    ORDER BY f.created_at DESC
+    LIMIT ?
+  `, [1000], (err, allRows: any[]) => {  // Get all farmers, then slice
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    // Return only new farmers (beyond the last count)
+    const newFarmers = allRows.slice(0, Math.max(0, allRows.length - lastCount));
+    res.json({ farmers: newFarmers });
+  });
 });
 
 // Serve React app for root route

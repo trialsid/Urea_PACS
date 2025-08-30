@@ -1,4 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, memo } from 'react';
+import { isToday, getCurrentIndianDateISO, toIndianDateISO } from '../utils/dateTime';
+import Pagination from './Pagination';
 
 interface Order {
   id: number;
@@ -18,11 +20,79 @@ interface OrdersListProps {
   onSelectOrder?: (order: Order) => void;
 }
 
+// Memoized order row component
+const OrderRow = memo(({ order, onSelectOrder }: { order: Order, onSelectOrder?: (order: Order) => void }) => {
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return {
+      date: date.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }),
+      time: date.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      })
+    };
+  };
+
+  const { date, time } = formatDateTime(order.created_at);
+  
+  return (
+    <tr key={order.id} className="hover:bg-neutral-50 transition-colors">
+      <td className="px-6 py-4">
+        <span className="text-sm font-mono font-medium text-neutral-900">#{order.id}</span>
+      </td>
+      <td className="px-6 py-4">
+        <div>
+          <div className="text-sm font-medium text-neutral-900">{order.farmer_name}</div>
+          <div className="text-xs text-neutral-500">Aadhaar: ****-****-{order.farmer_aadhaar.slice(-4)}</div>
+        </div>
+      </td>
+      <td className="px-6 py-4 text-sm text-neutral-900">{order.farmer_village}</td>
+      <td className="px-6 py-4">
+        <div className="flex items-center">
+          <span className="text-sm font-medium text-neutral-900">{order.quantity} bags</span>
+          <span className="ml-2 text-xs text-neutral-500">@ ₹{order.unit_price}/bag</span>
+        </div>
+      </td>
+      <td className="px-6 py-4 text-sm font-medium text-neutral-900">
+        ₹{order.total_amount.toLocaleString()}
+      </td>
+      <td className="px-6 py-4">
+        <div>
+          <div className="text-sm text-neutral-900">{date}</div>
+          <div className="text-xs text-neutral-500">{time}</div>
+        </div>
+      </td>
+      <td className="px-6 py-4 text-right">
+        <div className="flex items-center justify-end space-x-2">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success-100 text-success-800">
+            Paid
+          </span>
+          {onSelectOrder && (
+            <button
+              onClick={() => onSelectOrder(order)}
+              className="text-primary-600 hover:text-primary-900 text-sm font-medium"
+            >
+              View Details
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+});
+
 const OrdersList: React.FC<OrdersListProps> = ({ orders, onBack, onSelectOrder }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
   const [sortBy, setSortBy] = useState<'created_at' | 'farmer_name' | 'total_amount' | 'farmer_village'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 15; // 15 orders per page
 
   const filteredAndSortedOrders = useMemo(() => {
     let filtered = orders.filter(order => {
@@ -31,7 +101,7 @@ const OrdersList: React.FC<OrdersListProps> = ({ orders, onBack, onSelectOrder }
         order.farmer_village.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.farmer_aadhaar.includes(searchTerm);
 
-      const orderDate = new Date(order.created_at).toISOString().split('T')[0];
+      const orderDate = toIndianDateISO(order.created_at);
       const matchesDateRange = (
         (dateRange.startDate === '' || orderDate >= dateRange.startDate) &&
         (dateRange.endDate === '' || orderDate <= dateRange.endDate)
@@ -64,6 +134,23 @@ const OrdersList: React.FC<OrdersListProps> = ({ orders, onBack, onSelectOrder }
     });
   }, [orders, searchTerm, dateRange, sortBy, sortOrder]);
 
+  // Paginated data
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredAndSortedOrders.slice(startIndex, startIndex + pageSize);
+  }, [filteredAndSortedOrders, currentPage, pageSize]);
+
+  // Reset to first page when search or date filter changes
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
+
+  const handleDateRangeChange = (field: 'startDate' | 'endDate', value: string) => {
+    setDateRange(prev => ({ ...prev, [field]: value }));
+    setCurrentPage(1);
+  };
+
   const handleSort = (column: typeof sortBy) => {
     if (sortBy === column) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -90,15 +177,13 @@ const OrdersList: React.FC<OrdersListProps> = ({ orders, onBack, onSelectOrder }
   };
 
   const todayTotal = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
     return orders
-      .filter(order => new Date(order.created_at).toISOString().split('T')[0] === today)
+      .filter(order => isToday(order.created_at))
       .reduce((sum, order) => sum + order.total_amount, 0);
   }, [orders]);
 
   const todayCount = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    return orders.filter(order => new Date(order.created_at).toISOString().split('T')[0] === today).length;
+    return orders.filter(order => isToday(order.created_at)).length;
   }, [orders]);
 
   const generateCSV = () => {
@@ -139,7 +224,7 @@ const OrdersList: React.FC<OrdersListProps> = ({ orders, onBack, onSelectOrder }
     } else if (dateRange.endDate) {
       filename += `_until_${dateRange.endDate}`;
     } else {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentIndianDateISO();
       filename += `_all_${today}`;
     }
     filename += '.csv';
@@ -219,7 +304,7 @@ const OrdersList: React.FC<OrdersListProps> = ({ orders, onBack, onSelectOrder }
                 type="text"
                 placeholder="Search by farmer name, village, or Aadhaar..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
@@ -229,7 +314,7 @@ const OrdersList: React.FC<OrdersListProps> = ({ orders, onBack, onSelectOrder }
               <input
                 type="date"
                 value={dateRange.startDate}
-                onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                onChange={(e) => handleDateRangeChange('startDate', e.target.value)}
                 placeholder="From date"
                 className="w-40 px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
@@ -239,7 +324,7 @@ const OrdersList: React.FC<OrdersListProps> = ({ orders, onBack, onSelectOrder }
               <input
                 type="date"
                 value={dateRange.endDate}
-                onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                onChange={(e) => handleDateRangeChange('endDate', e.target.value)}
                 placeholder="To date"
                 className="w-40 px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
@@ -322,7 +407,7 @@ const OrdersList: React.FC<OrdersListProps> = ({ orders, onBack, onSelectOrder }
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-neutral-200">
-              {filteredAndSortedOrders.length === 0 ? (
+              {paginatedOrders.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-neutral-500">
                     <div className="flex flex-col items-center">
@@ -335,58 +420,21 @@ const OrdersList: React.FC<OrdersListProps> = ({ orders, onBack, onSelectOrder }
                   </td>
                 </tr>
               ) : (
-                filteredAndSortedOrders.map((order) => {
-                  const { date, time } = formatDateTime(order.created_at);
-                  
-                  return (
-                    <tr key={order.id} className="hover:bg-neutral-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <span className="text-sm font-mono font-medium text-neutral-900">#{order.id}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className="text-sm font-medium text-neutral-900">{order.farmer_name}</div>
-                          <div className="text-xs text-neutral-500">Aadhaar: ****-****-{order.farmer_aadhaar.slice(-4)}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-neutral-900">{order.farmer_village}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <span className="text-sm font-medium text-neutral-900">{order.quantity} bags</span>
-                          <span className="ml-2 text-xs text-neutral-500">@ ₹{order.unit_price}/bag</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium text-neutral-900">
-                        ₹{order.total_amount.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className="text-sm text-neutral-900">{date}</div>
-                          <div className="text-xs text-neutral-500">{time}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end space-x-2">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success-100 text-success-800">
-                            Paid
-                          </span>
-                          {onSelectOrder && (
-                            <button
-                              onClick={() => onSelectOrder(order)}
-                              className="text-primary-600 hover:text-primary-900 text-sm font-medium"
-                            >
-                              View Details
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                paginatedOrders.map((order) => (
+                  <OrderRow key={order.id} order={order} onSelectOrder={onSelectOrder} />
+                ))
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredAndSortedOrders.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* Summary */}

@@ -1,5 +1,7 @@
+import React, { useState, useMemo } from 'react';
 import { OrderWithFarmer } from '../types';
 import { formatIndianDateShort, formatIndianTime } from '../utils/dateTime';
+import Pagination from './Pagination';
 
 interface OrderHistoryV2Props {
   orders: OrderWithFarmer[];
@@ -8,6 +10,15 @@ interface OrderHistoryV2Props {
 }
 
 function OrderHistoryV2({ orders, title = "Order History", showFarmerInfo = false }: OrderHistoryV2Props) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10; // 10 orders per page for sidebar
+
+  // Paginated orders
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return orders.slice(startIndex, startIndex + pageSize);
+  }, [orders, currentPage, pageSize]);
+
   if (orders.length === 0) {
     return (
       <div className="bg-white p-6 rounded-xl shadow-lg border border-neutral-200 h-full">
@@ -40,7 +51,7 @@ function OrderHistoryV2({ orders, title = "Order History", showFarmerInfo = fals
             </tr>
           </thead>
           <tbody>
-            {orders.map((order) => {
+            {paginatedOrders.map((order) => {
               return (
               <tr key={order.id} className="border-b hover:bg-neutral-50 bg-white">
                 <th scope="row" className="px-2 py-3 font-medium text-neutral-900 whitespace-nowrap">
@@ -71,6 +82,19 @@ function OrderHistoryV2({ orders, title = "Order History", showFarmerInfo = fals
           </tbody>
         </table>
       </div>
+      
+      {/* Pagination - only show if more than pageSize items */}
+      {orders.length > pageSize && (
+        <div className="mt-4">
+          <Pagination
+            currentPage={currentPage}
+            totalItems={orders.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            showInfo={false} // Compact for sidebar
+          />
+        </div>
+      )}
     </div>
   );
 }

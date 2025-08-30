@@ -1,5 +1,5 @@
 import { OrderWithFarmer } from '../types';
-import { formatIndianDateTime } from '../utils/dateTime';
+import { formatIndianDateTime, getCurrentIndianDateTime } from '../utils/dateTime';
 
 interface ThermalReceiptProps {
   order: OrderWithFarmer;
@@ -45,7 +45,7 @@ function ThermalReceipt({ order }: ThermalReceiptProps) {
           </div>
         </div>
         <div style={{ textAlign: 'center', fontSize: '14px' }}>
-          {formatIndianDateTime(order.created_at || new Date().toISOString())}
+          {formatIndianDateTime(order.created_at || getCurrentIndianDateTime())}
         </div>
       </div>
 

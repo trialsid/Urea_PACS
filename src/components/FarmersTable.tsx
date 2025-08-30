@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, memo } from 'react';
+import Pagination from './Pagination';
 
 interface Farmer {
   id: number;
@@ -18,10 +19,71 @@ interface FarmersTableProps {
   onSelectFarmer?: (farmer: Farmer) => void;
 }
 
+// Memoized farmer row component
+const FarmerRow = memo(({ farmer, onSelectFarmer }: { farmer: Farmer, onSelectFarmer?: (farmer: Farmer) => void }) => {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  return (
+    <tr key={farmer.id} className="hover:bg-neutral-50 transition-colors">
+      <td className="px-6 py-4">
+        <div>
+          <div className="text-sm font-medium text-neutral-900">{farmer.name}</div>
+          <div className="text-xs text-neutral-500">Aadhaar: ****-****-{farmer.aadhaar.slice(-4)}</div>
+          {farmer.contact && (
+            <div className="text-xs text-neutral-500">Contact: {farmer.contact}</div>
+          )}
+        </div>
+      </td>
+      <td className="px-6 py-4 text-sm text-neutral-900">{farmer.village}</td>
+      <td className="px-6 py-4">
+        <div className="flex items-center">
+          <span className="text-sm font-medium text-neutral-900">{farmer.total_orders}</span>
+          {farmer.total_orders > 0 && (
+            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-100 text-success-800">
+              Active
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="px-6 py-4 text-sm font-medium text-neutral-900">
+        ₹{farmer.total_spent.toLocaleString()}
+      </td>
+      <td className="px-6 py-4">
+        <div>
+          <div className="text-sm text-neutral-900">{formatDate(farmer.created_at)}</div>
+          {farmer.last_order_date && (
+            <div className="text-xs text-neutral-500">
+              Last order: {formatDate(farmer.last_order_date)}
+            </div>
+          )}
+        </div>
+      </td>
+      <td className="px-6 py-4 text-right">
+        {onSelectFarmer && (
+          <button
+            onClick={() => onSelectFarmer(farmer)}
+            className="text-primary-600 hover:text-primary-900 text-sm font-medium"
+          >
+            View Details
+          </button>
+        )}
+      </td>
+    </tr>
+  );
+});
+
 const FarmersTable: React.FC<FarmersTableProps> = ({ farmers, onBack, onSelectFarmer }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'village' | 'created_at' | 'total_orders' | 'total_spent'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20; // 20 farmers per page
 
   const filteredAndSortedFarmers = useMemo(() => {
     const filtered = farmers.filter(farmer => 
@@ -57,6 +119,18 @@ const FarmersTable: React.FC<FarmersTableProps> = ({ farmers, onBack, onSelectFa
       return sortOrder === 'asc' ? comparison : -comparison;
     });
   }, [farmers, searchTerm, sortBy, sortOrder]);
+
+  // Paginated data
+  const paginatedFarmers = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredAndSortedFarmers.slice(startIndex, startIndex + pageSize);
+  }, [filteredAndSortedFarmers, currentPage, pageSize]);
+
+  // Reset to first page when search changes
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
 
   const handleSort = (column: typeof sortBy) => {
     if (sortBy === column) {
@@ -130,7 +204,7 @@ const FarmersTable: React.FC<FarmersTableProps> = ({ farmers, onBack, onSelectFa
                 type="text"
                 placeholder="Search by name, village, Aadhaar, or contact..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
@@ -195,7 +269,7 @@ const FarmersTable: React.FC<FarmersTableProps> = ({ farmers, onBack, onSelectFa
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-neutral-200">
-              {filteredAndSortedFarmers.length === 0 ? (
+              {paginatedFarmers.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-neutral-500">
                     <div className="flex flex-col items-center">
@@ -208,57 +282,21 @@ const FarmersTable: React.FC<FarmersTableProps> = ({ farmers, onBack, onSelectFa
                   </td>
                 </tr>
               ) : (
-                filteredAndSortedFarmers.map((farmer) => (
-                  <tr key={farmer.id} className="hover:bg-neutral-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="text-sm font-medium text-neutral-900">{farmer.name}</div>
-                        <div className="text-xs text-neutral-500">Aadhaar: ****-****-{farmer.aadhaar.slice(-4)}</div>
-                        {farmer.contact && (
-                          <div className="text-xs text-neutral-500">Contact: {farmer.contact}</div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-neutral-900">{farmer.village}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <span className="text-sm font-medium text-neutral-900">{farmer.total_orders}</span>
-                        {farmer.total_orders > 0 && (
-                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success-100 text-success-800">
-                            Active
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-neutral-900">
-                      ₹{farmer.total_spent.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="text-sm text-neutral-900">{formatDate(farmer.created_at)}</div>
-                        {farmer.last_order_date && (
-                          <div className="text-xs text-neutral-500">
-                            Last order: {formatDate(farmer.last_order_date)}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      {onSelectFarmer && (
-                        <button
-                          onClick={() => onSelectFarmer(farmer)}
-                          className="text-primary-600 hover:text-primary-900 text-sm font-medium"
-                        >
-                          View Details
-                        </button>
-                      )}
-                    </td>
-                  </tr>
+                paginatedFarmers.map((farmer) => (
+                  <FarmerRow key={farmer.id} farmer={farmer} onSelectFarmer={onSelectFarmer} />
                 ))
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredAndSortedFarmers.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* Summary */}

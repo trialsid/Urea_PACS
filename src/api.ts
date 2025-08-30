@@ -78,5 +78,32 @@ export const api = {
       throw new Error('Backend not available');
     }
     return response.json();
+  },
+
+  // Get counts for change detection
+  getCounts: async (): Promise<{ farmers: number; orders: number; lastOrderId?: number }> => {
+    const response = await fetch(`${API_BASE}/counts`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch counts');
+    }
+    return response.json();
+  },
+
+  // Get only new orders since a specific ID
+  getOrdersSince: async (lastOrderId: number): Promise<{ orders: OrderWithFarmer[] }> => {
+    const response = await fetch(`${API_BASE}/orders/since/${lastOrderId}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch new orders');
+    }
+    return response.json();
+  },
+
+  // Get only new farmers since a specific count
+  getFarmersSince: async (lastCount: number): Promise<{ farmers: any[] }> => {
+    const response = await fetch(`${API_BASE}/farmers/since/${lastCount}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch new farmers');
+    }
+    return response.json();
   }
 };

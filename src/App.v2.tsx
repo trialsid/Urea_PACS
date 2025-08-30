@@ -11,6 +11,8 @@ import OrdersList from './components/OrdersList';
 import FarmerDetail from './components/FarmerDetail';
 import OrderDetail from './components/OrderDetail';
 import ThermalReceipt from './components/ThermalReceipt';
+import { useToast } from './components/ToastContainer';
+import { useRealTimeUpdates } from './hooks/useRealTimeUpdates';
 import { isToday, getCurrentIndianDateTime } from './utils/dateTime';
 
 function AppV2() {
@@ -37,6 +39,57 @@ function AppV2() {
   const [error, setError] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [currentTime, setCurrentTime] = useState<string>(getCurrentIndianDateTime());
+
+  // Toast notifications
+  const { addToast, ToastContainer } = useToast();
+
+  // Smart state update functions
+  const addNewFarmer = (farmer: any) => {
+    setAllFarmers(prev => {
+      // Check if farmer already exists
+      if (prev.some(f => f.id === farmer.id)) {
+        return prev;
+      }
+      // Add new farmer to beginning of array
+      const updated = [farmer, ...prev];
+      
+      // Show notification
+      addToast({
+        type: 'success',
+        title: 'New Farmer Registered',
+        message: `${farmer.name} from ${farmer.village} has been registered`
+      });
+      
+      return updated;
+    });
+  };
+
+  const addNewOrder = (order: any) => {
+    setAllOrders(prev => {
+      // Check if order already exists
+      if (prev.some(o => o.id === order.id)) {
+        return prev;
+      }
+      // Add new order to beginning of array
+      const updated = [order, ...prev];
+      
+      // Show notification
+      addToast({
+        type: 'info',
+        title: 'New Order Placed',
+        message: `Order #${order.id} - ${order.farmer_name} (₹${order.total_amount})`
+      });
+      
+      return updated;
+    });
+  };
+
+  // Real-time updates - only enable when not in new-order flow
+  useRealTimeUpdates({
+    onNewFarmer: addNewFarmer,
+    onNewOrder: addNewOrder,
+    enabled: backendStatus === 'online' && currentView !== 'new-order'
+  });
 
   // Check backend status and load data on app load
   useEffect(() => {
@@ -121,6 +174,10 @@ function AppV2() {
         }
         
         const { farmer: newFarmer } = await api.createFarmer({ aadhaar, name, village, contact });
+        
+        // Add new farmer to state immediately (optimistic update)
+        setAllFarmers(prev => [{ ...newFarmer, total_orders: 0, total_spent: 0 }, ...prev]);
+        
         setAppState(prev => ({
           ...prev,
           aadhaar,
@@ -148,9 +205,20 @@ function AppV2() {
         unit_price: 268
       });
       
-      // Fetch all orders for receipt stage
-      const allOrdersResponse = await api.getAllOrders();
-      setAllOrders(allOrdersResponse.orders || []);
+      // Update state with new order immediately (optimistic update)
+      setAllOrders(prev => [order, ...prev]);
+      
+      // Update farmer data to reflect new order
+      setAllFarmers(prev => prev.map(f => 
+        f.id === appState.farmer?.id 
+          ? { 
+              ...f, 
+              total_orders: f.total_orders + 1, 
+              total_spent: f.total_spent + order.total_amount,
+              last_order_date: order.created_at 
+            }
+          : f
+      ));
       
       setAppState(prev => ({
         ...prev,
@@ -705,6 +773,9 @@ function AppV2() {
           </div>
         </div>
       )}
+
+      {/* Toast Container */}
+      <ToastContainer />
     </div>
   );
 }
