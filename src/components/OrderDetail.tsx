@@ -77,14 +77,24 @@ const OrderDetail: React.FC<OrderDetailProps> = ({
             <p className="text-neutral-600">Complete order information and transaction history</p>
           </div>
         </div>
-        {onReprintReceipt && (
-          <button
-            onClick={() => onReprintReceipt(order)}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
-          >
-            Reprint Receipt
-          </button>
-        )}
+        <div className="flex items-center space-x-3">
+          {farmer && onViewFarmer && (
+            <button
+              onClick={() => onViewFarmer(farmer)}
+              className="px-4 py-2 bg-success-600 text-white rounded-lg hover:bg-success-700 transition-colors font-medium"
+            >
+              View Farmer
+            </button>
+          )}
+          {onReprintReceipt && (
+            <button
+              onClick={() => onReprintReceipt(order)}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+            >
+              Reprint Receipt
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Two Panel Layout */}
@@ -149,16 +159,8 @@ const OrderDetail: React.FC<OrderDetailProps> = ({
 
               {/* Farmer Information - Compact */}
               <div>
-                <div className="flex items-center justify-between mb-3">
+                <div className="mb-3">
                   <h4 className="text-sm font-semibold text-neutral-900">Farmer Information</h4>
-                  {farmer && onViewFarmer && (
-                    <button
-                      onClick={() => onViewFarmer(farmer)}
-                      className="text-xs text-primary-600 hover:text-primary-700 font-medium"
-                    >
-                      View Profile →
-                    </button>
-                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -194,33 +196,6 @@ const OrderDetail: React.FC<OrderDetailProps> = ({
                 )}
               </div>
 
-              {/* Action Buttons - Compact */}
-              <div className="flex flex-col space-y-2 pt-2">
-                {onReprintReceipt && (
-                  <button
-                    onClick={() => onReprintReceipt(order)}
-                    className="px-3 py-2 bg-primary-600 text-white rounded text-sm font-medium hover:bg-primary-700 transition-colors"
-                  >
-                    Reprint Receipt
-                  </button>
-                )}
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => window.print()}
-                    className="flex-1 px-3 py-2 bg-neutral-100 text-neutral-900 rounded text-sm font-medium hover:bg-neutral-200 transition-colors"
-                  >
-                    Print Details
-                  </button>
-                  {farmer && onViewFarmer && (
-                    <button
-                      onClick={() => onViewFarmer(farmer)}
-                      className="flex-1 px-3 py-2 bg-success-100 text-success-900 rounded text-sm font-medium hover:bg-success-200 transition-colors"
-                    >
-                      View Farmer
-                    </button>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
         </div>

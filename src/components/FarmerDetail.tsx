@@ -159,23 +159,6 @@ const FarmerDetail: React.FC<FarmerDetailProps> = ({ farmer, orders, onBack, onN
                 )}
               </div>
 
-              {/* Action Buttons - Compact */}
-              <div className="flex space-x-2 pt-2">
-                {onNewOrder && (
-                  <button
-                    onClick={() => onNewOrder(farmer)}
-                    className="flex-1 px-3 py-2 bg-primary-600 text-white rounded text-sm font-medium hover:bg-primary-700 transition-colors"
-                  >
-                    New Order
-                  </button>
-                )}
-                <button
-                  onClick={() => window.print()}
-                  className="flex-1 px-3 py-2 bg-neutral-100 text-neutral-900 rounded text-sm font-medium hover:bg-neutral-200 transition-colors"
-                >
-                  Print Details
-                </button>
-              </div>
             </div>
           </div>
         </div>
