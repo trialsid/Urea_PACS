@@ -35,7 +35,7 @@ Token No: ${tokenNum}
 
 Item                 Qty x Rate      Total
 ${createLine('-', 40)}
-Urea (50kg)          ${order.quantity} x ${(order.total_amount / order.quantity).toFixed(0)}       ${order.total_amount.toFixed(0)}
+Urea (45kg)          ${order.quantity} x ${(order.total_amount / order.quantity).toFixed(0)}       ${order.total_amount.toFixed(0)}
 
 Date: ${currentDate}                Time: ${currentTime}`;
 

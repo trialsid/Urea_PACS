@@ -10,6 +10,8 @@ interface ReceiptV2Props {
 function ReceiptV2({ order, onNewOrder }: ReceiptV2Props) {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const selectedStyle = 'decorative';
+
 
   const handlePrint = () => {
     setShowPrintModal(true);
@@ -23,7 +25,7 @@ function ReceiptV2({ order, onNewOrder }: ReceiptV2Props) {
       const response = await fetch('/api/print/thermal-receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: order.id })
+        body: JSON.stringify({ orderId: order.id, style: selectedStyle })
       });
       
       const result = await response.json();
@@ -97,7 +99,7 @@ function ReceiptV2({ order, onNewOrder }: ReceiptV2Props) {
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">Urea Fertilizer</p>
-                  <p className="text-xs text-gray-500">50kg bags • Subsidized rate</p>
+                  <p className="text-xs text-gray-500">45kg bags • Subsidized rate</p>
                 </div>
               </div>
               <div className="text-right">
@@ -173,7 +175,7 @@ function ReceiptV2({ order, onNewOrder }: ReceiptV2Props) {
                 </p>
                 <div className="bg-white rounded border-2 border-dashed border-gray-300 p-2">
                   <div className="print-thermal-receipt">
-                    <ThermalReceiptPreview order={order} />
+                    <ThermalReceiptPreview order={order} style={selectedStyle} />
                   </div>
                 </div>
               </div>

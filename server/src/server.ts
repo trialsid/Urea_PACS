@@ -305,10 +305,22 @@ app.get('/api/farmers/since/:lastCount', (req: Request, res: Response) => {
 
 // Thermal Printer Endpoints
 
+// Get available receipt styles
+app.get('/api/receipt-styles', (req: Request, res: Response) => {
+  res.json({
+    styles: [
+      { id: 'classic', name: 'Classic', description: 'Simple and clean (original format)' },
+      { id: 'decorative', name: 'Decorative', description: 'ASCII art borders and frames' },
+      { id: 'modern', name: 'Modern', description: 'Clean with emphasis blocks' },
+      { id: 'elegant', name: 'Elegant', description: 'Ornate design with diamond patterns' }
+    ]
+  });
+});
+
 // Print thermal receipt for an order
 app.post('/api/print/thermal-receipt', async (req: Request, res: Response) => {
   try {
-    const { orderId } = req.body;
+    const { orderId, style = 'decorative' } = req.body;
     
     if (!orderId) {
       return res.status(400).json({ error: 'Order ID is required' });
@@ -330,13 +342,13 @@ app.post('/api/print/thermal-receipt', async (req: Request, res: Response) => {
       }
 
       try {
-        // Print thermal receipt using PACS2 format
+        // Print thermal receipt using selected style
         const jobId = await thermalPrinter.printOrderReceipt(order, {
           name: order.farmer_name,
           village: order.farmer_village,
           aadhaar: order.farmer_aadhaar,
           contact: order.farmer_contact
-        });
+        }, style);
 
         console.log(`✅ Thermal receipt printed for Order #${orderId}, Job: ${jobId}`);
         
@@ -372,6 +384,7 @@ app.post('/api/print/thermal-receipt', async (req: Request, res: Response) => {
 app.get('/api/preview/thermal-receipt/:orderId', (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
+    const { style = 'decorative' } = req.query;
     
     if (!orderId) {
       return res.status(400).json({ error: 'Order ID is required' });
@@ -395,10 +408,10 @@ app.get('/api/preview/thermal-receipt/:orderId', (req: Request, res: Response) =
       try {
         // Generate the same receipt data as the printer would use
         const receiptData = {
-          organization: "PACS, Ieeja", 
+          organization: "PACS-AIZA", 
           tokenNumber: order.id.toString(),
           items: [{
-            description: "Urea (50kg)",
+            description: "Urea (45kg)",
             quantity: order.quantity,
             rate: (order.total_amount / order.quantity).toString(),
             unit: "bag",
@@ -414,8 +427,8 @@ app.get('/api/preview/thermal-receipt/:orderId', (req: Request, res: Response) =
           customerService: "1800-123-4567"
         };
 
-        // Generate the thermal receipt format using the same method
-        const thermalReceipt = thermalPrinter.printer.generateSimplePACSReceipt(receiptData);
+        // Generate the thermal receipt format using the same method with selected style
+        const thermalReceipt = thermalPrinter.printer.generateSimplePACSReceipt(receiptData, style as string);
         
         // Create a formatted preview text by applying the printf template
         // This simulates what would be printed without ESC/POS codes

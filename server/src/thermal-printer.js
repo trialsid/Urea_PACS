@@ -12,37 +12,185 @@ class WorkingThermalPrinter {
         return char.repeat(length);
     }
 
-    // Generate Simple PACS Receipt - focused and minimal
-    generateSimplePACSReceipt(data) {
+    // Generate PACS Receipt with multiple style options
+    generateSimplePACSReceipt(data, style = 'decorative') {
         const currentDate = moment().format('DD-MM-YYYY');
         const currentTime = moment().format('hh:mm A');
         
-        // Create centered text lines
-        const orgName = data.organization || "PACS, Ieeja";
+        const orgName = data.organization || "PACS-AIZA";
         const tokenNum = data.tokenNumber || "142";
+        const farmerName = (data.farmer && data.farmer.name) ? data.farmer.name : "Unknown";
         
-        // Simple left alignment for everything
-        const tokenLabel = "Token No: ";
+        const styles = {
+            classic: this.generateClassicStyle(orgName, tokenNum, farmerName, data, currentDate, currentTime),
+            decorative: this.generateDecorativeStyle(orgName, tokenNum, farmerName, data, currentDate, currentTime),
+            modern: this.generateModernStyle(orgName, tokenNum, farmerName, data, currentDate, currentTime),
+            elegant: this.generateElegantStyle(orgName, tokenNum, farmerName, data, currentDate, currentTime)
+        };
         
+        return styles[style] || styles.decorative;
+    }
+
+    // Style 1: Classic - Simple and clean like original
+    generateClassicStyle(orgName, tokenNum, farmerName, data, currentDate, currentTime) {
         const receiptTemplate = `\\x1B\\x21\\x30%s\\x1B\\x21\\x00\\n\\n%s\\x1B\\x21\\x38\\x1B\\x45\\x01%s\\x1B\\x45\\x00\\x1B\\x21\\x00\\n\\nFarmer: %s\\n\\n%-20s %10s %10s\\n%s\\n%-20s %10s \\x1B\\x45\\x01%10s\\x1B\\x45\\x00\\n\\nDate: %-20s Time: %s\\n\\n\\n\\x1D\\x56\\x00`;
         
-        const values = [
-            orgName,
-            tokenLabel,
-            tokenNum,
-            (data.farmer && data.farmer.name) ? data.farmer.name : "Unknown",
-            "Item",
-            "Qty x Rate",
-            "Total",
-            this.createLine('-', 40),
-            (data.items && data.items[0]) ? data.items[0].description : "Urea (50kg)",
-            `${(data.items && data.items[0]) ? data.items[0].quantity : "2"} x ${(data.items && data.items[0]) ? data.items[0].rate : "268"}`,
-            (data.items && data.items[0]) ? data.items[0].total : "536",
-            currentDate,
-            currentTime
-        ];
+        return {
+            template: receiptTemplate,
+            values: [
+                orgName,
+                "Token No: ",
+                tokenNum,
+                farmerName,
+                "Item", "Qty x Rate", "Total",
+                this.createLine('-', 40),
+                (data.items && data.items[0]) ? data.items[0].description : "Urea (45kg)",
+                `${(data.items && data.items[0]) ? data.items[0].quantity : "2"} x ${(data.items && data.items[0]) ? data.items[0].rate : "268"}`,
+                (data.items && data.items[0]) ? data.items[0].total : "536",
+                currentDate,
+                currentTime
+            ]
+        };
+    }
+
+    // Style 2: Decorative - ASCII art borders
+    generateDecorativeStyle(orgName, tokenNum, farmerName, data, currentDate, currentTime) {
+        const receiptTemplate = `%s
+\\x1B\\x21\\x30%s\\x1B\\x21\\x00
+%s
+%s
+Token No: \\x1B\\x21\\x38\\x1B\\x45\\x01%s\\x1B\\x45\\x00\\x1B\\x21\\x00
+Farmer: %s
+%s
+%-18s %8s %10s
+%s
+%-18s %8s \\x1B\\x45\\x01%10s\\x1B\\x45\\x00
+%s
+Date: %s     Time: %s
+%s
+%s
+\\x1D\\x56\\x00`;
         
-        return { template: receiptTemplate, values: values };
+        return {
+            template: receiptTemplate,
+            values: [
+                "+========================================+",
+                orgName,
+                "FERTILIZER RECEIPT",
+                "+========================================+",
+                tokenNum,
+                farmerName,
+                "+========================================+",
+                "Item", "Qty x Rate", "Amount",
+                "+----------------------------------------+",
+                (data.items && data.items[0]) ? data.items[0].description : "Urea (45kg)",
+                `${(data.items && data.items[0]) ? data.items[0].quantity : "2"} x ${(data.items && data.items[0]) ? data.items[0].rate : "268"}`,
+                (data.items && data.items[0]) ? data.items[0].total : "536",
+                "+========================================+",
+                currentDate,
+                currentTime,
+                "   * Thank you for your business! *",
+                "========================================"
+            ]
+        };
+    }
+
+    // Style 3: Modern - Clean with emphasis
+    generateModernStyle(orgName, tokenNum, farmerName, data, currentDate, currentTime) {
+        const receiptTemplate = `%s
+  %s
+%s
+
+    \\x1B\\x21\\x38\\x1B\\x45\\x01TOKEN: %s\\x1B\\x45\\x00\\x1B\\x21\\x00
+
+    FARMER: %s
+
+%s
+%-20s %10s %10s
+%s
+%-20s %10s \\x1B\\x45\\x01%10s\\x1B\\x45\\x00
+%s
+
+%s | %s
+
+%s
+\\x1D\\x56\\x00`;
+        
+        return {
+            template: receiptTemplate,
+            values: [
+                "########################################",
+                orgName,
+                "########################################",
+                tokenNum,
+                farmerName,
+                "----------------------------------------",
+                "ITEM", "QTY x RATE", "AMOUNT",
+                "========================================",
+                (data.items && data.items[0]) ? data.items[0].description : "Urea (45kg)",
+                `${(data.items && data.items[0]) ? data.items[0].quantity : "2"} x ${(data.items && data.items[0]) ? data.items[0].rate : "268"}`,
+                (data.items && data.items[0]) ? data.items[0].total : "536",
+                "========================================",
+                currentDate,
+                currentTime,
+                "        Thank you! Visit again."
+            ]
+        };
+    }
+
+    // Style 4: Elegant - Ornate ASCII design
+    generateElegantStyle(orgName, tokenNum, farmerName, data, currentDate, currentTime) {
+        const receiptTemplate = `%s
+%s
+%s
+%s
+%s\\x1B\\x21\\x38\\x1B\\x45\\x01%s\\x1B\\x45\\x00\\x1B\\x21\\x00%s
+%s %s %s
+%s
+%-18s %8s %10s
+%s
+%-18s %8s \\x1B\\x45\\x01%10s\\x1B\\x45\\x00
+%s
+%s | %s
+%s
+%s
+%s
+\\x1D\\x56\\x00`;
+        
+        return {
+            template: receiptTemplate,
+            values: [
+                "  *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*",
+                "  -" + this.centerText(orgName, 34) + "-",
+                "  *" + this.centerText("FERTILIZER RECEIPT", 34) + "*",
+                "  -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*",
+                "  - Token:",
+                tokenNum,
+                " -",
+                "  * Farmer:",
+                farmerName,
+                "*",
+                "  -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*",
+                "Item", "Qty x Rate", "Amount",
+                "  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+                (data.items && data.items[0]) ? data.items[0].description : "Urea (45kg)",
+                `${(data.items && data.items[0]) ? data.items[0].quantity : "2"} x ${(data.items && data.items[0]) ? data.items[0].rate : "268"}`,
+                (data.items && data.items[0]) ? data.items[0].total : "536",
+                "  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+                currentDate,
+                currentTime,
+                "  -*-  Thank you for your visit!  -*-",
+                "  -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*",
+                "  *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*"
+            ]
+        };
+    }
+
+    // Helper function to center text within the receipt width
+    centerText(text, width = 42) {
+        if (text.length >= width) return text;
+        const padding = Math.floor((width - text.length) / 2);
+        return ' '.repeat(padding) + text;
     }
 
     // Print using the working printf approach
@@ -78,12 +226,12 @@ class PACSReceiptPrinter {
         this.printer = new WorkingThermalPrinter();
     }
 
-    async printOrderReceipt(order, farmer) {
+    async printOrderReceipt(order, farmer, style = 'decorative') {
         const receiptData = {
-            organization: "PACS, Ieeja", 
+            organization: "PACS-AIZA", 
             tokenNumber: order.id.toString(),
             items: [{
-                description: "Urea (50kg)",
+                description: "Urea (45kg)",
                 quantity: order.quantity,
                 rate: order.unit_price.toString(),
                 unit: "bag",
@@ -99,8 +247,8 @@ class PACSReceiptPrinter {
             customerService: "1800-123-4567"
         };
 
-        console.log('🖨️  Generating PACS2 receipt for Order #' + order.id);
-        const thermalReceipt = this.printer.generateSimplePACSReceipt(receiptData);
+        console.log(`🖨️  Generating PACS receipt (${style} style) for Order #${order.id}`);
+        const thermalReceipt = this.printer.generateSimplePACSReceipt(receiptData, style);
         return await this.printer.print(thermalReceipt);
     }
 

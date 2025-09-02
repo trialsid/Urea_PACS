@@ -21,6 +21,7 @@ function AppV2() {
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [showReprintModal, setShowReprintModal] = useState(false);
   const [reprintOrder, setReprintOrder] = useState<any | null>(null);
+  const selectedReprintStyle = 'decorative';
   const [appState, setAppState] = useState<AppState>({
     step: 'aadhaar-entry',
     aadhaar: '',
@@ -104,6 +105,7 @@ function AppV2() {
     };
     checkBackend();
   }, []);
+
 
   // Update current time every second
   useEffect(() => {
@@ -342,7 +344,7 @@ function AppV2() {
       const response = await fetch('/api/print/thermal-receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: reprintOrder.id })
+        body: JSON.stringify({ orderId: reprintOrder.id, style: selectedReprintStyle })
       });
       
       const result = await response.json();
@@ -782,7 +784,7 @@ function AppV2() {
                 <div className="bg-white rounded border-2 border-dashed border-gray-300 p-2 overflow-x-auto">
                   <div className="reprint-thermal-receipt min-w-max">
                     {reprintOrder ? (
-                      <ThermalReceiptPreview order={reprintOrder} />
+                      <ThermalReceiptPreview order={reprintOrder} style={selectedReprintStyle} />
                     ) : (
                       <div>Loading receipt...</div>
                     )}

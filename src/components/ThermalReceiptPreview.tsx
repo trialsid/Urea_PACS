@@ -3,10 +3,11 @@ import { OrderWithFarmer } from '../types';
 
 interface ThermalReceiptPreviewProps {
   order: OrderWithFarmer;
+  style?: string;
 }
 
 // Component that fetches and displays the actual thermal printer preview from the backend
-function ThermalReceiptPreview({ order }: ThermalReceiptPreviewProps) {
+function ThermalReceiptPreview({ order, style = 'classic' }: ThermalReceiptPreviewProps) {
   const [preview, setPreview] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +24,7 @@ function ThermalReceiptPreview({ order }: ThermalReceiptPreviewProps) {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(`/api/preview/thermal-receipt/${order.id}`);
+        const response = await fetch(`/api/preview/thermal-receipt/${order.id}?style=${style}`);
         const data = await response.json();
 
         if (data.success) {
@@ -39,7 +40,7 @@ function ThermalReceiptPreview({ order }: ThermalReceiptPreviewProps) {
     };
 
     fetchPreview();
-  }, [order?.id]);
+  }, [order?.id, style]);
 
   if (loading) {
     return (
