@@ -9,43 +9,37 @@ interface ReceiptV2Props {
 
 function ReceiptV2({ order, onNewOrder }: ReceiptV2Props) {
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   const handlePrint = () => {
     setShowPrintModal(true);
   };
 
-  const handlePrintReceipt = () => {
-    // Create a temporary print window with just the thermal receipt
-    const printContent = document.createElement('div');
-    printContent.innerHTML = `
-      <style>
-        @media print {
-          body { margin: 0; padding: 16px; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        }
-      </style>
-    `;
-    
-    // Create thermal receipt for printing
-    const printReceipt = document.createElement('div');
-    printReceipt.innerHTML = document.querySelector('.print-thermal-receipt')?.innerHTML || '';
-    printContent.appendChild(printReceipt);
-
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head><title>Print Receipt</title></head>
-          <body>${printContent.innerHTML}</body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
-      printWindow.close();
+  const handleThermalPrint = async () => {
+    try {
+      setIsPrinting(true);
+      
+      // Call thermal print API instead of browser print
+      const response = await fetch('/api/print/thermal-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Show success message
+        alert(`✅ Receipt printed to thermal printer!\nJob ID: ${result.jobId}\nOrder #${result.order.id}`);
+      } else {
+        throw new Error(result.message || 'Print failed');
+      }
+    } catch (error) {
+      alert(`❌ Thermal print failed: ${(error as Error).message}`);
+    } finally {
+      setIsPrinting(false);
+      handleClosePrintModal();
     }
-    
-    handleClosePrintModal();
   };
 
   const handleClosePrintModal = () => {
@@ -175,7 +169,7 @@ function ReceiptV2({ order, onNewOrder }: ReceiptV2Props) {
             <div className="p-6 overflow-y-auto max-h-96">
               <div className="bg-gray-50 rounded-lg p-4 mb-4">
                 <p className="text-sm text-gray-600 mb-2">
-                  Preview of thermal receipt (3-inch width):
+                  PACS2 thermal receipt will be printed to Posiflex PP8800:
                 </p>
                 <div className="bg-white rounded border-2 border-dashed border-gray-300 p-2">
                   <div className="print-thermal-receipt">
@@ -185,9 +179,10 @@ function ReceiptV2({ order, onNewOrder }: ReceiptV2Props) {
               </div>
               
               <div className="text-xs text-gray-500 space-y-1">
-                <p>• Receipt will be printed at 3-inch width</p>
-                <p>• Make sure your thermal printer is connected</p>
-                <p>• Use 58mm or 80mm thermal paper</p>
+                <p>• Receipt will be printed using PACS2 format</p>
+                <p>• Printed on 3-inch thermal paper (80mm)</p>
+                <p>• Make sure Posiflex PP8800 is connected</p>
+                <p>• Paper will be automatically cut after printing</p>
               </div>
             </div>
 
@@ -197,17 +192,28 @@ function ReceiptV2({ order, onNewOrder }: ReceiptV2Props) {
                 <button
                   onClick={handleClosePrintModal}
                   className="flex-1 py-2.5 px-4 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-sm font-medium"
+                  disabled={isPrinting}
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handlePrintReceipt}
-                  className="flex-1 py-2.5 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                  onClick={handleThermalPrint}
+                  disabled={isPrinting}
+                  className="flex-1 py-2.5 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-sm font-medium flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
-                  Print Now
+                  {isPrinting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Printing...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                      </svg>
+                      Print Thermal Receipt
+                    </>
+                  )}
                 </button>
               </div>
             </div>

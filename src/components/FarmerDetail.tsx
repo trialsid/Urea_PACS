@@ -42,48 +42,49 @@ const FarmerDetail: React.FC<FarmerDetailProps> = ({ farmer, orders, onBack, onN
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header - Mobile Responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center space-x-3 sm:space-x-4">
           <button
             onClick={onBack}
-            className="p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
+            className="p-2 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors flex-shrink-0"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <div>
-            <h2 className="text-2xl font-bold text-neutral-900">Farmer Details</h2>
-            <p className="text-neutral-600">Complete information and order history</p>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xl sm:text-2xl font-bold text-neutral-900">Farmer Details</h2>
+            <p className="text-sm sm:text-base text-neutral-600 hidden sm:block">Complete information and order history</p>
           </div>
         </div>
         {onNewOrder && (
           <button
             onClick={() => onNewOrder(farmer)}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm sm:text-base w-full sm:w-auto"
           >
-            New Order for {farmer.name}
+            <span className="hidden sm:inline">New Order for {farmer.name}</span>
+            <span className="sm:hidden">New Order</span>
           </button>
         )}
       </div>
 
-      {/* Two Panel Layout */}
-      <div className="flex justify-center items-start gap-6">
-        {/* Left Panel - Farmer Details */}
-        <div className="w-auto flex-shrink-0">
-          <div className="bg-white rounded-lg border border-neutral-200 shadow-sm" style={{ width: '480px' }}>
+      {/* Responsive Layout */}
+      <div className="flex flex-col lg:flex-row lg:justify-center lg:items-start gap-4 sm:gap-6">
+        {/* Farmer Details Panel */}
+        <div className="w-full lg:w-auto lg:flex-shrink-0">
+          <div className="bg-white rounded-lg border border-neutral-200 shadow-sm max-w-full lg:max-w-none" style={{maxWidth: '100%', width: '100%'}}>
             {/* Compact Header */}
-            <div className="bg-gradient-to-r from-success-50 to-success-100 p-4 rounded-t-lg border-b border-success-200">
-              <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-success-400 to-success-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-gradient-to-r from-success-50 to-success-100 p-3 sm:p-4 rounded-t-lg border-b border-success-200">
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-success-400 to-success-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-neutral-900">{farmer.name}</h3>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg sm:text-xl font-bold text-neutral-900 truncate">{farmer.name}</h3>
                   <p className="text-sm text-neutral-600">{farmer.village}</p>
                   <div className="mt-2">
                     {farmer.total_orders > 0 ? (
@@ -99,18 +100,18 @@ const FarmerDetail: React.FC<FarmerDetailProps> = ({ farmer, orders, onBack, onN
                     )}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-lg font-bold text-success-900">{farmer.total_orders}</div>
+                <div className="text-right flex-shrink-0">
+                  <div className="text-base sm:text-lg font-bold text-success-900">{farmer.total_orders}</div>
                   <div className="text-xs text-success-600">Orders</div>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 space-y-4">
-              {/* Personal Information - Compact Grid */}
+            <div className="p-3 sm:p-4 space-y-4">
+              {/* Personal Information - Mobile Responsive Grid */}
               <div>
                 <h4 className="text-sm font-semibold text-neutral-900 mb-3">Personal Information</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
                   <div>
                     <span className="text-neutral-600 block">Aadhaar Number</span>
                     <span className="text-neutral-900 font-mono">****-****-{farmer.aadhaar.slice(-4)}</span>
@@ -132,21 +133,21 @@ const FarmerDetail: React.FC<FarmerDetailProps> = ({ farmer, orders, onBack, onN
                 </div>
               </div>
 
-              {/* Order Statistics - Horizontal Cards */}
+              {/* Order Statistics - Mobile Responsive Cards */}
               <div>
                 <h4 className="text-sm font-semibold text-neutral-900 mb-3">Order Statistics</h4>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="bg-primary-50 rounded p-3 text-center border border-primary-200">
-                    <div className="text-lg font-bold text-primary-900">{farmer.total_orders}</div>
+                    <div className="text-base sm:text-lg font-bold text-primary-900">{farmer.total_orders}</div>
                     <div className="text-xs text-primary-600">Total Orders</div>
                   </div>
                   <div className="bg-success-50 rounded p-3 text-center border border-success-200">
-                    <div className="text-lg font-bold text-success-900">₹{farmer.total_spent.toLocaleString()}</div>
+                    <div className="text-base sm:text-lg font-bold text-success-900">₹{farmer.total_spent.toLocaleString()}</div>
                     <div className="text-xs text-success-600">Total Spent</div>
                   </div>
                   <div className="bg-blue-50 rounded p-3 text-center border border-blue-200">
-                    <div className="text-lg font-bold text-blue-900">
-                      {farmer.total_orders > 0 ? Math.round(farmer.total_spent / farmer.total_orders) : 0}
+                    <div className="text-base sm:text-lg font-bold text-blue-900">
+                      ₹{farmer.total_orders > 0 ? Math.round(farmer.total_spent / farmer.total_orders) : 0}
                     </div>
                     <div className="text-xs text-blue-600">Avg Order</div>
                   </div>
@@ -163,8 +164,8 @@ const FarmerDetail: React.FC<FarmerDetailProps> = ({ farmer, orders, onBack, onN
           </div>
         </div>
 
-        {/* Right Panel - Order History */}
-        <div className="flex-1 min-w-80 max-w-2xl">
+        {/* Order History Panel - Mobile Responsive */}
+        <div className="w-full lg:flex-1 lg:min-w-80 lg:max-w-2xl">
           <OrderHistoryV2 
             orders={orders}
             title={`Order History for ${farmer.name}`}

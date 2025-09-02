@@ -235,6 +235,48 @@ body {
   color: #166534;
 }
 
+/* Mobile-specific improvements */
+@media (max-width: 768px) {
+  /* Improve touch targets */
+  button, .btn-primary {
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+  }
+  
+  /* Better input styling for mobile */
+  .input-field {
+    font-size: 16px; /* Prevent zoom on iOS */
+    padding: 0.875rem 1rem;
+  }
+  
+  /* Horizontal scroll for tables */
+  .table-container {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Stack elements on mobile */
+  .mobile-stack {
+    flex-direction: column !important;
+  }
+  
+  /* Hide desktop-only elements */
+  .desktop-only {
+    display: none !important;
+  }
+  
+  /* Mobile-friendly spacing */
+  .mobile-spacing {
+    padding: 1rem !important;
+  }
+}
+
+/* Tablet improvements */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .tablet-responsive {
+    padding: 1.5rem;
+  }
+}
+
 /* Print styles for receipts */
 @media print {
   * {
@@ -259,5 +301,25 @@ body {
   
   .print-only {
     display: block !important;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .card {
+    border-width: 2px;
+  }
+  
+  .btn-primary {
+    border-width: 2px;
   }
 }

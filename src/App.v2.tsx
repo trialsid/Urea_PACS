@@ -334,37 +334,34 @@ function AppV2() {
     setReprintOrder(null);
   };
 
-  const handlePrintReceipt = () => {
+  const handlePrintReceipt = async () => {
     if (!reprintOrder) return;
 
-    // Create a temporary print window with just the thermal receipt
-    const printContent = document.createElement('div');
-    printContent.innerHTML = `
-      <style>
-        @media print {
-          body { margin: 0; padding: 16px; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        }
-      </style>
-    `;
-    
-    // Create thermal receipt for printing
-    const printReceipt = document.createElement('div');
-    printReceipt.innerHTML = document.querySelector('.reprint-thermal-receipt')?.innerHTML || '';
-    printContent.appendChild(printReceipt);
-
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head><title>Print Receipt</title></head>
-          <body>${printContent.innerHTML}</body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
-      printWindow.close();
+    try {
+      // Call thermal print API instead of browser print
+      const response = await fetch('/api/print/thermal-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: reprintOrder.id })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        addToast({
+          type: 'success',
+          title: 'Receipt Printed',
+          message: `Thermal receipt printed! Job ID: ${result.jobId}`
+        });
+      } else {
+        throw new Error(result.message || 'Print failed');
+      }
+    } catch (error) {
+      addToast({
+        type: 'error', 
+        title: 'Print Failed',
+        message: (error as Error).message
+      });
     }
     
     handleClosePrintModal();
@@ -411,35 +408,39 @@ function AppV2() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* Modern Desktop Header */}
+      {/* Responsive Header */}
       <header className="bg-white border-b border-neutral-200 shadow-lg">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between py-4">
             {/* Enhanced Logo and Branding */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
               <button 
                 onClick={handleBackToDashboard}
-                className="header-logo cursor-pointer"
+                className="header-logo cursor-pointer flex-shrink-0"
               >
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
               </button>
-              <div>
+              <div className="min-w-0 flex-1">
                 <button 
                   onClick={handleBackToDashboard}
-                  className="text-left cursor-pointer"
+                  className="text-left cursor-pointer block w-full"
                 >
-                  <h1 className="text-2xl font-extrabold text-neutral-900 tracking-tight hover:text-primary-600 transition-colors">Urea PACS Distribution</h1>
-                  <p className="text-sm text-neutral-600 font-medium tracking-wide">Agricultural Cooperative Society • Digital Distribution System</p>
+                  <h1 className="text-lg sm:text-2xl font-extrabold text-neutral-900 tracking-tight hover:text-primary-600 transition-colors truncate">
+                    <span className="hidden sm:inline">Urea PACS Distribution</span>
+                    <span className="sm:hidden">PACS</span>
+                  </h1>
+                  <p className="text-xs sm:text-sm text-neutral-600 font-medium tracking-wide hidden sm:block">Agricultural Cooperative Society • Digital Distribution System</p>
+                  <p className="text-xs text-neutral-600 font-medium sm:hidden">Distribution System</p>
                 </button>
               </div>
             </div>
 
-            {/* Navigation and System Status */}
-            <div className="flex items-center space-x-6">
-              {/* Navigation Pills - Always Show */}
-              <div className="flex items-center space-x-1 bg-neutral-100 rounded-lg p-1">
+            {/* Mobile Menu Toggle */}
+            <div className="flex items-center space-x-2 sm:space-x-6">
+              {/* Navigation Pills - Desktop */}
+              <div className="hidden lg:flex items-center space-x-1 bg-neutral-100 rounded-lg p-1">
                 <button
                   onClick={handleBackToDashboard}
                   className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
@@ -483,12 +484,12 @@ function AppV2() {
               </div>
               
               {/* System Status */}
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2 bg-success-50 px-3 py-1 rounded-full border border-success-200">
-                  <div className="bg-success-500 rounded-full animate-pulse" style={{width: '8px', height: '8px'}}></div>
-                  <span className="text-xs font-semibold text-success-700">Online</span>
+              <div className="flex items-center space-x-2 sm:space-x-4">
+                <div className="flex items-center space-x-1 sm:space-x-2 bg-success-50 px-2 sm:px-3 py-1 rounded-full border border-success-200">
+                  <div className="bg-success-500 rounded-full animate-pulse" style={{width: '6px', height: '6px'}}></div>
+                  <span className="text-xs font-semibold text-success-700 hidden sm:inline">Online</span>
                 </div>
-                <div className="text-right">
+                <div className="text-right hidden sm:block">
                   <div className="text-xs text-neutral-500 font-medium">Session Active</div>
                   <div className="text-xs font-semibold text-neutral-700">{currentTime}</div>
                 </div>
@@ -496,11 +497,56 @@ function AppV2() {
             </div>
           </div>
 
+          {/* Mobile Navigation */}
+          <div className="lg:hidden border-t border-neutral-200 py-2 overflow-x-auto">
+            <div className="flex space-x-1 min-w-max">
+              <button
+                onClick={handleBackToDashboard}
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+                  currentView === 'dashboard' 
+                    ? 'bg-primary-100 text-primary-900' 
+                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+                }`}
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => handleNavigate('new-order')}
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+                  currentView === 'new-order' 
+                    ? 'bg-primary-100 text-primary-900' 
+                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+                }`}
+              >
+                New Order
+              </button>
+              <button
+                onClick={() => handleNavigate('farmers')}
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+                  currentView === 'farmers' 
+                    ? 'bg-primary-100 text-primary-900' 
+                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+                }`}
+              >
+                Farmers
+              </button>
+              <button
+                onClick={() => handleNavigate('orders')}
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
+                  currentView === 'orders' 
+                    ? 'bg-primary-100 text-primary-900' 
+                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+                }`}
+              >
+                Orders
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
-      {/* Desktop Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      {/* Responsive Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {/* Global Error Display */}
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
@@ -584,10 +630,10 @@ function AppV2() {
 
         {currentView === 'new-order' && (
           <div className="space-y-6">
-            {/* Progress Indicator - In Main Content */}
+            {/* Progress Indicator - Mobile Responsive */}
             <div className="flex justify-center">
               <div className="w-full max-w-4xl">
-                <div className="flex justify-between items-center bg-white rounded-lg p-4 border border-neutral-200 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-white rounded-lg p-3 sm:p-4 border border-neutral-200 shadow-sm space-y-2 sm:space-y-0">
                   {[
                     { key: 'aadhaar-entry', label: 'Farmer Information', icon: 'M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z' },
                     { key: 'order-confirmation', label: 'Order Confirmation', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
@@ -600,41 +646,42 @@ function AppV2() {
                     return (
                       <div key={step.key} className="flex items-center flex-1">
                         <div className={`
-                          w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-200 mr-3
+                          w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border-2 transition-all duration-200 mr-2 sm:mr-3 flex-shrink-0
                           ${isCompleted ? 'bg-primary-600 border-primary-600 text-white' :
                             isActive ? 'bg-primary-600 border-primary-600 text-white' :
                             'bg-white border-neutral-300 text-neutral-400'}
                         `}>
                           {isCompleted ? (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
                             </svg>
                           ) : (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={step.icon} />
                             </svg>
                           )}
                         </div>
                         
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <span className={`
-                            text-sm font-semibold
+                            text-xs sm:text-sm font-semibold block truncate
                             ${isActive ? 'text-primary-600' : 
                               isCompleted ? 'text-primary-600' : 
                               'text-neutral-500'}
                           `}>
-                            {step.label}
+                            <span className="hidden sm:inline">{step.label}</span>
+                            <span className="sm:hidden">{step.label.split(' ')[0]}</span>
                           </span>
                           {isActive && (
-                            <div className="text-xs text-primary-500 mt-0.5">Current Step</div>
+                            <div className="text-xs text-primary-500 mt-0.5 hidden sm:block">Current Step</div>
                           )}
                           {isCompleted && (
-                            <div className="text-xs text-success-600 mt-0.5">Completed ✓</div>
+                            <div className="text-xs text-success-600 mt-0.5 hidden sm:block">Completed ✓</div>
                           )}
                         </div>
                         
                         {index < 2 && (
-                          <div className={`w-12 h-0.5 mx-4 rounded-full ${
+                          <div className={`w-6 sm:w-12 h-0.5 mx-2 sm:mx-4 rounded-full hidden sm:block ${
                             currentIndex > index ? 'bg-primary-600' : 'bg-neutral-300'
                           }`}></div>
                         )}
@@ -645,15 +692,15 @@ function AppV2() {
               </div>
             </div>
 
-            {/* Order Flow Content */}
-            <div className={`flex justify-center items-start ${
-              appState.step === 'receipt' ? 'gap-8' : 'gap-4'
+            {/* Order Flow Content - Mobile Responsive */}
+            <div className={`flex flex-col lg:flex-row justify-center items-start ${
+              appState.step === 'receipt' ? 'gap-4 lg:gap-8' : 'gap-4'
             }`}>
               {/* Main Form */}
-              <div className={`transition-all duration-300 ${
+              <div className={`transition-all duration-300 w-full ${
                 appState.step === 'receipt' 
-                  ? 'w-auto flex-shrink-0' 
-                  : appState.step === 'order-confirmation' ? 'w-auto max-w-lg' : 'w-full max-w-4xl'
+                  ? 'lg:w-auto lg:flex-shrink-0' 
+                  : appState.step === 'order-confirmation' ? 'lg:w-auto lg:max-w-lg max-w-full' : 'max-w-4xl'
               }`}>
                 {/* Step Content */}
                 {appState.step === 'aadhaar-entry' && (
@@ -682,13 +729,13 @@ function AppV2() {
                 )}
               </div>
             
-              {/* Sidebar - To the right */}
+              {/* Sidebar - Responsive */}
               {((appState.step === 'order-confirmation' && appState.orderHistory.length > 0) ||
                 (appState.step === 'receipt' && allOrders.length > 0)) && (
-                <div className={`flex-shrink-0 ${
+                <div className={`w-full lg:flex-shrink-0 ${
                   appState.step === 'receipt' 
-                    ? 'flex-1 min-w-80 max-w-xl' 
-                    : 'w-96'
+                    ? 'lg:flex-1 lg:min-w-80 lg:max-w-xl' 
+                    : 'lg:w-96'
                 }`}>
                   <OrderHistoryV2 
                     orders={appState.step === 'receipt' ? allOrders : appState.orderHistory}
@@ -702,38 +749,38 @@ function AppV2() {
         )}
       </main>
 
-      {/* Reprint Modal */}
+      {/* Reprint Modal - Mobile Responsive */}
       {showReprintModal && reprintOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[95vh] sm:max-h-[90vh] overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">Reprint Receipt</h3>
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900">Reprint Receipt</h3>
               </div>
               <button
                 onClick={handleClosePrintModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-1 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
               >
-                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="p-6 overflow-y-auto max-h-96">
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <p className="text-sm text-gray-600 mb-2">
-                  Preview of thermal receipt for Order #{reprintOrder.id}:
+            <div className="p-3 sm:p-6 overflow-y-auto" style={{maxHeight: 'calc(95vh - 180px)'}}>
+              <div className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                <p className="text-xs sm:text-sm text-gray-600 mb-2">
+                  PACS2 thermal receipt will be printed for Order #{reprintOrder.id}:
                 </p>
-                <div className="bg-white rounded border-2 border-dashed border-gray-300 p-2">
-                  <div className="reprint-thermal-receipt">
+                <div className="bg-white rounded border-2 border-dashed border-gray-300 p-2 overflow-x-auto">
+                  <div className="reprint-thermal-receipt min-w-max">
                     {reprintOrder ? (
                       <ThermalReceipt order={reprintOrder} />
                     ) : (
@@ -744,29 +791,30 @@ function AppV2() {
               </div>
               
               <div className="text-xs text-gray-500 space-y-1">
-                <p>• Receipt will be printed at 3-inch width</p>
-                <p>• Make sure your thermal printer is connected</p>
-                <p>• Use 58mm or 80mm thermal paper</p>
+                <p>• Receipt will be printed using PACS2 format</p>
+                <p>• Printed to Posiflex PP8800 thermal printer</p>
+                <p>• Uses 3-inch thermal paper (80mm)</p>
+                <p>• Paper will be automatically cut after printing</p>
               </div>
             </div>
 
             {/* Modal Actions */}
-            <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
-              <div className="flex gap-3">
+            <div className="p-3 sm:p-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   onClick={handleClosePrintModal}
-                  className="flex-1 py-2.5 px-4 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-sm font-medium"
+                  className="order-2 sm:order-1 flex-1 py-2.5 px-4 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-sm font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handlePrintReceipt}
-                  className="flex-1 py-2.5 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                  className="order-1 sm:order-2 flex-1 py-2.5 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-sm font-medium flex items-center justify-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                   </svg>
-                  Print Now
+                  Print Thermal Receipt
                 </button>
               </div>
             </div>

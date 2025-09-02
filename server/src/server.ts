@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { db, initializeDatabase } from './database';
 import { Farmer, Order, OrderWithFarmer } from './models';
+import { PACSReceiptPrinter } from './thermal-printer';
 
 const app = express();
 const PORT = 3001;
@@ -12,6 +13,9 @@ app.use(express.json());
 
 // Serve static files from the React build
 app.use(express.static(path.join(__dirname, '../../dist')));
+
+// Initialize thermal printer
+const thermalPrinter = new PACSReceiptPrinter();
 
 // Aadhaar validation function
 const validateAadhaar = (aadhaar: string): boolean => {
@@ -220,7 +224,9 @@ app.get('/api', (req: Request, res: Response) => {
       'POST /api/farmer',
       'POST /api/order',
       'GET /api/orders',
-      'GET /api/farmers'
+      'GET /api/farmers',
+      'POST /api/print/thermal-receipt',
+      'GET /api/printer/status'
     ]
   });
 });
@@ -295,6 +301,85 @@ app.get('/api/farmers/since/:lastCount', (req: Request, res: Response) => {
     const newFarmers = allRows.slice(0, Math.max(0, allRows.length - lastCount));
     res.json({ farmers: newFarmers });
   });
+});
+
+// Thermal Printer Endpoints
+
+// Print thermal receipt for an order
+app.post('/api/print/thermal-receipt', async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.body;
+    
+    if (!orderId) {
+      return res.status(400).json({ error: 'Order ID is required' });
+    }
+
+    // Get order details from database
+    db.get(`
+      SELECT o.*, f.name as farmer_name, f.aadhaar as farmer_aadhaar, f.village as farmer_village, f.contact as farmer_contact
+      FROM orders o
+      JOIN farmers f ON o.farmer_id = f.id
+      WHERE o.id = ?
+    `, [orderId], async (err, order: any) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      if (!order) {
+        return res.status(404).json({ error: 'Order not found' });
+      }
+
+      try {
+        // Print thermal receipt using PACS2 format
+        const jobId = await thermalPrinter.printOrderReceipt(order, {
+          name: order.farmer_name,
+          village: order.farmer_village,
+          aadhaar: order.farmer_aadhaar,
+          contact: order.farmer_contact
+        });
+
+        console.log(`✅ Thermal receipt printed for Order #${orderId}, Job: ${jobId}`);
+        
+        res.json({
+          success: true,
+          message: 'Receipt printed to thermal printer',
+          jobId: jobId,
+          order: {
+            id: order.id,
+            farmer_name: order.farmer_name,
+            total_amount: order.total_amount,
+            quantity: order.quantity
+          }
+        });
+      } catch (printError) {
+        console.error('❌ Thermal print failed:', printError);
+        res.status(500).json({
+          success: false,
+          message: 'Thermal print failed: ' + (printError as Error).message
+        });
+      }
+    });
+  } catch (error) {
+    console.error('❌ Print endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error: ' + (error as Error).message
+    });
+  }
+});
+
+// Check thermal printer status
+app.get('/api/printer/status', async (req: Request, res: Response) => {
+  try {
+    const status = await thermalPrinter.checkPrinterStatus();
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check printer status',
+      error: (error as Error).message
+    });
+  }
 });
 
 // Serve React app for root route
