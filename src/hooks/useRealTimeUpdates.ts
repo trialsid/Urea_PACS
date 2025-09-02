@@ -15,7 +15,7 @@ export const useRealTimeUpdates = ({
   intervalMs = 3000 // Check every 3 seconds for local Pi
 }: UseRealTimeUpdatesProps) => {
   const lastCountsRef = useRef<{ farmers: number; orders: number; lastOrderId?: number } | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<number | null>(null);
 
   const checkForUpdates = useCallback(async () => {
     try {

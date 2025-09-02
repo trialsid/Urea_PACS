@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { OrderWithFarmer } from '../types';
-import ThermalReceipt from './ThermalReceipt';
+import ThermalReceiptPreview from './ThermalReceiptPreview';
 
 interface ReceiptV2Props {
   order: OrderWithFarmer;
@@ -169,11 +169,11 @@ function ReceiptV2({ order, onNewOrder }: ReceiptV2Props) {
             <div className="p-6 overflow-y-auto max-h-96">
               <div className="bg-gray-50 rounded-lg p-4 mb-4">
                 <p className="text-sm text-gray-600 mb-2">
-                  PACS2 thermal receipt will be printed to Posiflex PP8800:
+                  Exact thermal receipt that will be printed to Posiflex PP8800:
                 </p>
                 <div className="bg-white rounded border-2 border-dashed border-gray-300 p-2">
                   <div className="print-thermal-receipt">
-                    <ThermalReceipt order={order} />
+                    <ThermalReceiptPreview order={order} />
                   </div>
                 </div>
               </div>

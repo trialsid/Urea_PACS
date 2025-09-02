@@ -368,6 +368,125 @@ app.post('/api/print/thermal-receipt', async (req: Request, res: Response) => {
   }
 });
 
+// Preview thermal receipt for an order (same format as printing, but returns text)
+app.get('/api/preview/thermal-receipt/:orderId', (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+    
+    if (!orderId) {
+      return res.status(400).json({ error: 'Order ID is required' });
+    }
+
+    // Get order details from database (same query as print endpoint)
+    db.get(`
+      SELECT o.*, f.name as farmer_name, f.aadhaar as farmer_aadhaar, f.village as farmer_village, f.contact as farmer_contact
+      FROM orders o
+      JOIN farmers f ON o.farmer_id = f.id
+      WHERE o.id = ?
+    `, [orderId], (err, order: any) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      if (!order) {
+        return res.status(404).json({ error: 'Order not found' });
+      }
+
+      try {
+        // Generate the same receipt data as the printer would use
+        const receiptData = {
+          organization: "PACS, Ieeja", 
+          tokenNumber: order.id.toString(),
+          items: [{
+            description: "Urea (50kg)",
+            quantity: order.quantity,
+            rate: (order.total_amount / order.quantity).toString(),
+            unit: "bag",
+            total: order.total_amount.toString()
+          }],
+          subtotal: order.total_amount,
+          tax: 0.00,
+          farmer: {
+            name: order.farmer_name,
+            village: order.farmer_village,
+            aadhaar: order.farmer_aadhaar
+          },
+          customerService: "1800-123-4567"
+        };
+
+        // Generate the thermal receipt format using the same method
+        const thermalReceipt = thermalPrinter.printer.generateSimplePACSReceipt(receiptData);
+        
+        // Create a formatted preview text by applying the printf template
+        // This simulates what would be printed without ESC/POS codes
+        let previewText = thermalReceipt.template;
+        
+        // Replace ESC/POS commands with readable equivalents for preview
+        previewText = previewText
+          .replace(/\\x1B\\x21\\x30/g, '') // Remove double-width
+          .replace(/\\x1B\\x21\\x38/g, '') // Remove double-height 
+          .replace(/\\x1B\\x21\\x00/g, '') // Remove normal size
+          .replace(/\\x1B\\x45\\x01/g, '') // Remove bold on
+          .replace(/\\x1B\\x45\\x00/g, '') // Remove bold off
+          .replace(/\\x1D\\x56\\x00/g, '') // Remove paper cut command
+          .replace(/\\n/g, '\n');           // Convert literal \n to newlines
+        
+        // Apply the printf formatting with actual values
+        try {
+          // Handle the complex printf template properly
+          let formattedText = previewText;
+          let valueIndex = 0;
+          
+          // Replace all format specifiers (%s, %-20s, %10s, etc.) with values in order
+          formattedText = formattedText.replace(/%[-]?\d*s/g, () => {
+            if (valueIndex < thermalReceipt.values.length) {
+              const value = thermalReceipt.values[valueIndex++];
+              return value || '';
+            }
+            return '';
+          });
+          
+          res.json({
+            success: true,
+            preview: formattedText,
+            order: {
+              id: order.id,
+              farmer_name: order.farmer_name,
+              total_amount: order.total_amount,
+              quantity: order.quantity
+            }
+          });
+        } catch (formatError) {
+          console.error('Format error:', formatError);
+          // Fallback to raw template if formatting fails
+          res.json({
+            success: true,
+            preview: previewText,
+            order: {
+              id: order.id,
+              farmer_name: order.farmer_name,
+              total_amount: order.total_amount,
+              quantity: order.quantity
+            }
+          });
+        }
+      } catch (previewError) {
+        console.error('❌ Preview generation failed:', previewError);
+        res.status(500).json({
+          success: false,
+          message: 'Preview generation failed: ' + (previewError as Error).message
+        });
+      }
+    });
+  } catch (error) {
+    console.error('❌ Preview endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error: ' + (error as Error).message
+    });
+  }
+});
+
 // Check thermal printer status
 app.get('/api/printer/status', async (req: Request, res: Response) => {
   try {

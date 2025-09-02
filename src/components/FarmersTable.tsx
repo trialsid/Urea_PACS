@@ -199,14 +199,6 @@ const FarmersTable: React.FC<FarmersTableProps> = ({ farmers, onBack, onSelectFa
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-
   const SortIcon = ({ column }: { column: typeof sortBy }) => {
     if (sortBy !== column) {
       return (

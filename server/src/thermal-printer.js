@@ -24,12 +24,13 @@ class WorkingThermalPrinter {
         // Simple left alignment for everything
         const tokenLabel = "Token No: ";
         
-        const receiptTemplate = `\\x1B\\x21\\x30%s\\x1B\\x21\\x00\\n\\n%s\\x1B\\x21\\x38\\x1B\\x45\\x01%s\\x1B\\x45\\x00\\x1B\\x21\\x00\\n\\n%-20s %10s %10s\\n%s\\n%-20s %10s \\x1B\\x45\\x01%10s\\x1B\\x45\\x00\\n\\nDate: %-20s Time: %s\\n\\n\\n\\x1D\\x56\\x00`;
+        const receiptTemplate = `\\x1B\\x21\\x30%s\\x1B\\x21\\x00\\n\\n%s\\x1B\\x21\\x38\\x1B\\x45\\x01%s\\x1B\\x45\\x00\\x1B\\x21\\x00\\n\\nFarmer: %s\\n\\n%-20s %10s %10s\\n%s\\n%-20s %10s \\x1B\\x45\\x01%10s\\x1B\\x45\\x00\\n\\nDate: %-20s Time: %s\\n\\n\\n\\x1D\\x56\\x00`;
         
         const values = [
             orgName,
             tokenLabel,
             tokenNum,
+            (data.farmer && data.farmer.name) ? data.farmer.name : "Unknown",
             "Item",
             "Qty x Rate",
             "Total",

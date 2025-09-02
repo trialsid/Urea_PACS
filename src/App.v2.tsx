@@ -10,7 +10,7 @@ import FarmersTable from './components/FarmersTable';
 import OrdersList from './components/OrdersList';
 import FarmerDetail from './components/FarmerDetail';
 import OrderDetail from './components/OrderDetail';
-import ThermalReceipt from './components/ThermalReceipt';
+import ThermalReceiptPreview from './components/ThermalReceiptPreview';
 import { useToast } from './components/ToastContainer';
 import { useRealTimeUpdates } from './hooks/useRealTimeUpdates';
 import { isToday, getCurrentIndianDateTime } from './utils/dateTime';
@@ -782,7 +782,7 @@ function AppV2() {
                 <div className="bg-white rounded border-2 border-dashed border-gray-300 p-2 overflow-x-auto">
                   <div className="reprint-thermal-receipt min-w-max">
                     {reprintOrder ? (
-                      <ThermalReceipt order={reprintOrder} />
+                      <ThermalReceiptPreview order={reprintOrder} />
                     ) : (
                       <div>Loading receipt...</div>
                     )}

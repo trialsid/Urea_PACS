@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import Toast, { ToastMessage } from './Toast';
 
 export const useToast = () => {
