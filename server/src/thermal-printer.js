@@ -197,7 +197,7 @@ Date: %s     Time: %s
     async print(receiptData) {
         return new Promise((resolve, reject) => {
             // Construct printf command with template and values
-            const command = `printf "${receiptData.template}" ${receiptData.values.map(v => `"${v}"`).join(' ')} | lp -d ${this.printerName}`;
+            const command = `printf "${receiptData.template}" ${receiptData.values.map(v => `"${v}"`).join(' ')} | sudo tee /dev/usb/lp0 > /dev/null`;
             
             exec(command, { shell: '/bin/bash' }, (error, stdout, stderr) => {
                 if (error) {

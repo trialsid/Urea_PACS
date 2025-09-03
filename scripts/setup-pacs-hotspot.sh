@@ -64,15 +64,37 @@ if sudo systemctl is-active --quiet hostapd && sudo systemctl is-active --quiet 
     echo "🛑 Press Ctrl+C to shutdown PACS system"
     echo ""
     
-    # Change to the server directory
-    cd /home/pi/Urea_PACS/server || cd /home/$(whoami)/Documents/VSCode/AUG25/Urea_PACS/server
+    # Get the script directory and project root
+    SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+    
+    # Change to the server directory  
+    cd "$PROJECT_ROOT/server" || { echo "❌ Server directory not found"; exit 1; }
     
     # Set up complete cleanup on exit
     trap 'echo ""; echo "🔄 Shutting down PACS system..."; sudo systemctl stop hostapd; sudo systemctl stop dnsmasq; sudo ip addr flush dev wlan0; sudo systemctl start NetworkManager 2>/dev/null || sudo systemctl start wpa_supplicant 2>/dev/null; echo "✅ PACS system stopped"; echo "📶 Network services restarted"; exit 0' INT
     
-    # Start PACS server with production build
+    # Build and start PACS server
+    echo "🏗️  Building server..."
+    npm run build
+    if [ $? -ne 0 ]; then
+        echo "❌ Server build failed"
+        exit 1
+    fi
+    
     echo "🚀 Starting Urea PACS Server..."
-    npm run start
+    npm run start &
+    SERVER_PID=$!
+    
+    # Wait for server to initialize
+    sleep 5
+    
+    # Print simple access guide after database initialization
+    echo "🖨️  Printing access guide..."
+    printf "\\x1B\\x21\\x30READY\\x1B\\x21\\x00\\n\\nWiFi: Urea-PACS-System\\n\\nAddress:\\nhttp://192.168.4.1:3000\\nhttp://urea.pacs:3000\\n\\n\\x1D\\x56\\x00" | sudo tee /dev/usb/lp0 > /dev/null 2>/dev/null || echo "📋 Printer not available"
+    
+    # Wait for server process
+    wait $SERVER_PID
     
 else
     echo "❌ Failed to start PACS hotspot system"

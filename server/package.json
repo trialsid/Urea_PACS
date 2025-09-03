@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node src/server.ts",
-    "build": "tsc",
+    "build": "tsc && cp src/thermal-printer.js dist/",
     "start": "node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

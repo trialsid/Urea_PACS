@@ -1,6 +1,7 @@
 import { Farmer, OrderWithFarmer } from './types';
 
-const API_BASE = 'http://localhost:3001/api';
+// Use relative URLs so it works in both development and production/hotspot
+const API_BASE = '/api';
 
 export const api = {
   // Get farmer by Aadhaar number

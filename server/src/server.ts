@@ -6,7 +6,7 @@ import { Farmer, Order, OrderWithFarmer } from './models';
 import { PACSReceiptPrinter } from './thermal-printer';
 
 const app = express();
-const PORT = 3001;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(cors());
 app.use(express.json());
@@ -523,8 +523,8 @@ app.get('/', (req: Request, res: Response) => {
 const startServer = async () => {
   try {
     await initializeDatabase();
-    const server = app.listen(PORT, () => {
-      console.log(`🚀 Urea PACS Server running on http://localhost:${PORT}`);
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Urea PACS Server running on http://0.0.0.0:${PORT}`);
       console.log(`📊 Database initialized and ready`);
       console.log(`🔄 Server is running and waiting for requests...`);
       console.log(`💡 Press Ctrl+C to stop the server`);

@@ -1,0 +1,78 @@
+UREA PACS SYSTEM - HELP COMMANDS
+================================
+
+## AUTO-START SERVICE CONTROL
+
+Stop the running service:
+  sudo systemctl stop urea-pacs
+
+Start the service manually:
+  sudo systemctl start urea-pacs
+
+Restart the service:
+  sudo systemctl restart urea-pacs
+
+Check service status:
+  sudo systemctl status urea-pacs
+
+View live logs:
+  sudo journalctl -u urea-pacs -f
+
+View recent logs:
+  sudo journalctl -u urea-pacs -n 50
+
+## DISABLE AUTO-START ON BOOT
+
+Disable auto-start (but keep service):
+  sudo systemctl disable urea-pacs
+
+Re-enable auto-start:
+  sudo systemctl enable urea-pacs
+
+## MANUAL OPERATION (for testing)
+
+Stop service first, then run manually:
+  sudo systemctl stop urea-pacs
+  ./scripts/setup-pacs-hotspot.sh
+
+## EMERGENCY RESTORE NETWORK
+
+If hotspot gets stuck:
+  ./scripts/stop-hotspot.sh
+
+Or manually:
+  sudo systemctl stop hostapd dnsmasq
+  sudo ip addr flush dev wlan0
+  sudo systemctl start NetworkManager
+
+## DEVELOPMENT
+
+Run frontend only (development mode):
+  npm run dev
+
+Run backend only (development mode):
+  cd server && npm run dev
+
+Build everything:
+  npm run build
+  cd server && npm run build
+
+## PRINTER TROUBLESHOOTING
+
+Check printer connection:
+  lsusb | grep -i posiflex
+  ls /dev/usb/
+
+Check printer queue:
+  lpstat -p
+  lpstat -o
+
+## SYSTEM INFO
+
+Service file location: /etc/systemd/system/urea-pacs.service
+Project location: /home/thikka/projects/Urea_PACS
+Logs location: journalctl -u urea-pacs
+
+WiFi Hotspot: Urea-PACS-System
+Password: urea2025
+Access: http://192.168.4.1:3000 or http://urea.pacs:3000
