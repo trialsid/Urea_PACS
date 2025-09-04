@@ -342,13 +342,13 @@ app.post('/api/print/thermal-receipt', async (req: Request, res: Response) => {
       }
 
       try {
-        // Print thermal receipt using selected style
+        // Print thermal receipt
         const jobId = await thermalPrinter.printOrderReceipt(order, {
           name: order.farmer_name,
           village: order.farmer_village,
           aadhaar: order.farmer_aadhaar,
           contact: order.farmer_contact
-        }, style);
+        });
 
         console.log(`✅ Thermal receipt printed for Order #${orderId}, Job: ${jobId}`);
         
@@ -427,62 +427,45 @@ app.get('/api/preview/thermal-receipt/:orderId', (req: Request, res: Response) =
           customerService: "1800-123-4567"
         };
 
-        // Generate the thermal receipt format using the same method with selected style
-        const thermalReceipt = thermalPrinter.printer.generateSimplePACSReceipt(receiptData, style as string);
+        // Generate preview text for the ESC/POS receipt
+        const currentDate = new Date().toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: '2-digit', 
+          year: 'numeric'
+        });
         
-        // Create a formatted preview text by applying the printf template
-        // This simulates what would be printed without ESC/POS codes
-        let previewText = thermalReceipt.template;
+        const currentTime = new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        });
+
+        // Create a simple text preview of what would be printed
+        const previewText = `+========================================+
+${receiptData.organization}
+FERTILIZER RECEIPT
++========================================+
+Token No: ${receiptData.tokenNumber}
+Farmer: ${receiptData.farmer.name}
++========================================+
+Item               Qty x Rate     Amount
++----------------------------------------+
+${receiptData.items[0].description}          ${receiptData.items[0].quantity} x ${receiptData.items[0].rate}       ${receiptData.items[0].total}
++========================================+
+Date: ${currentDate}              Time: ${currentTime}
+   * Thank you for your cooperation! *
++========================================+`;
         
-        // Replace ESC/POS commands with readable equivalents for preview
-        previewText = previewText
-          .replace(/\\x1B\\x21\\x30/g, '') // Remove double-width
-          .replace(/\\x1B\\x21\\x38/g, '') // Remove double-height 
-          .replace(/\\x1B\\x21\\x00/g, '') // Remove normal size
-          .replace(/\\x1B\\x45\\x01/g, '') // Remove bold on
-          .replace(/\\x1B\\x45\\x00/g, '') // Remove bold off
-          .replace(/\\x1D\\x56\\x00/g, '') // Remove paper cut command
-          .replace(/\\n/g, '\n');           // Convert literal \n to newlines
-        
-        // Apply the printf formatting with actual values
-        try {
-          // Handle the complex printf template properly
-          let formattedText = previewText;
-          let valueIndex = 0;
-          
-          // Replace all format specifiers (%s, %-20s, %10s, etc.) with values in order
-          formattedText = formattedText.replace(/%[-]?\d*s/g, () => {
-            if (valueIndex < thermalReceipt.values.length) {
-              const value = thermalReceipt.values[valueIndex++];
-              return value || '';
-            }
-            return '';
-          });
-          
-          res.json({
-            success: true,
-            preview: formattedText,
-            order: {
-              id: order.id,
-              farmer_name: order.farmer_name,
-              total_amount: order.total_amount,
-              quantity: order.quantity
-            }
-          });
-        } catch (formatError) {
-          console.error('Format error:', formatError);
-          // Fallback to raw template if formatting fails
-          res.json({
-            success: true,
-            preview: previewText,
-            order: {
-              id: order.id,
-              farmer_name: order.farmer_name,
-              total_amount: order.total_amount,
-              quantity: order.quantity
-            }
-          });
-        }
+        res.json({
+          success: true,
+          preview: previewText,
+          order: {
+            id: order.id,
+            farmer_name: order.farmer_name,
+            total_amount: order.total_amount,
+            quantity: order.quantity
+          }
+        });
       } catch (previewError) {
         console.error('❌ Preview generation failed:', previewError);
         res.status(500).json({

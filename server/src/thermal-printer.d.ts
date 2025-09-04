@@ -1,16 +1,27 @@
-declare class WorkingThermalPrinter {
-    constructor(printerName?: string);
-    generateSimplePACSReceipt(data: any, style?: string): { template: string; values: string[] };
-    printReceipt(receiptText: string): Promise<any>;
+declare class ESCPOSPrinter {
+    constructor(devicePath?: string);
+    sendCommand(data: string | Buffer): void;
+    initialize(): void;
+    printText(text: string): void;
+    setBold(enabled?: boolean): void;
+    setFontSize(width?: number, height?: number): void;
+    setAlignCenter(): void;
+    setAlignLeft(): void;
+    cutPaper(): void;
+    feedLines(lines?: number): void;
+}
+
+declare class ThermalPrinter {
+    constructor();
+    generateSimplePACSReceipt(data: any): Function;
+    printESCPOS(receiptFunction: Function): Promise<any>;
 }
 
 declare class PACSReceiptPrinter {
-    printer: WorkingThermalPrinter;
+    printer: ThermalPrinter;
     constructor();
-    generateReceipt(data: any): string;
-    printReceipt(receiptText: string): Promise<any>;
-    printOrderReceipt(order: any, farmer: any, style?: string): Promise<any>;
+    printOrderReceipt(order: any, farmer: any): Promise<any>;
     checkPrinterStatus(): Promise<any>;
 }
 
-export { WorkingThermalPrinter, PACSReceiptPrinter };
+export { ESCPOSPrinter, ThermalPrinter, PACSReceiptPrinter };
