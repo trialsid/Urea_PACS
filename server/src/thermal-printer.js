@@ -59,14 +59,16 @@ class WorkingThermalPrinter {
 \\x1B\\x21\\x30%s\\x1B\\x21\\x00
 %s
 %s
-Token No: \\x1B\\x21\\x38\\x1B\\x45\\x01%s\\x1B\\x45\\x00\\x1B\\x21\\x00
+Token No: \\x1B\\x21\\x30%s\\x1B\\x21\\x00
 Farmer: %s
 %s
 %-18s %8s %10s
 %s
 %-18s %8s \\x1B\\x45\\x01%10s\\x1B\\x45\\x00
 %s
-Date: %s     Time: %s
+%-20s%22s
+%s
+%s
 %s
 %s
 \\x1D\\x56\\x00`;
@@ -87,10 +89,12 @@ Date: %s     Time: %s
                 `${(data.items && data.items[0]) ? data.items[0].quantity : "2"} x ${(data.items && data.items[0]) ? data.items[0].rate : "268"}`,
                 (data.items && data.items[0]) ? data.items[0].total : "536",
                 "+========================================+",
-                currentDate,
-                currentTime,
+                `Date: ${currentDate}`,
+                `Time: ${currentTime}`,
                 "   * Thank you for your business! *",
-                "========================================"
+                "+========================================+",
+                "",
+                ""
             ]
         };
     }
