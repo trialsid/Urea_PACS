@@ -91,7 +91,7 @@ Farmer: %s
                 "+========================================+",
                 `Date: ${currentDate}`,
                 `Time: ${currentTime}`,
-                "   * Thank you for your business! *",
+                "   * Thank you for your cooperation! *",
                 "+========================================+",
                 "",
                 ""
