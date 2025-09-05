@@ -74,7 +74,7 @@ if sudo systemctl is-active --quiet hostapd && sudo systemctl is-active --quiet 
     # Set up complete cleanup on exit
     trap 'echo ""; echo "🔄 Shutting down PACS system..."; sudo systemctl stop hostapd; sudo systemctl stop dnsmasq; sudo ip addr flush dev wlan0; sudo systemctl start NetworkManager 2>/dev/null || sudo systemctl start wpa_supplicant 2>/dev/null; echo "✅ PACS system stopped"; echo "📶 Network services restarted"; exit 0' INT
     
-    # Build and start PACS server
+    # Build PACS server first
     echo "🏗️  Building server..."
     npm run build
     if [ $? -ne 0 ]; then
@@ -82,18 +82,16 @@ if sudo systemctl is-active --quiet hostapd && sudo systemctl is-active --quiet 
         exit 1
     fi
     
-    echo "🚀 Starting Urea PACS Server..."
+    # Print READY message BEFORE starting server (app not accessible yet)
+    echo "🖨️  Printing READY message..."
+    printf "\x1B\x21\x30READY\x1B\x21\x00\n\nWiFi: Urea-PACS-System\n\nAddress:\nhttp://192.168.4.1:3000\nhttp://urea.pacs:3000\n\n\x1D\x56\x00" | sudo tee /dev/usb/lp0 > /dev/null 2>/dev/null || echo "📋 Printer not available"
+    
+    # NOW start the server - app becomes accessible only after READY prints
+    echo "🚀 Starting Urea PACS Server (app now accessible)..."
     npm run start &
     SERVER_PID=$!
     
-    # Wait for server to initialize
-    sleep 5
-    
-    # Print simple access guide after database initialization
-    echo "🖨️  Printing access guide..."
-    printf "\\x1B\\x21\\x30READY\\x1B\\x21\\x00\\n\\nWiFi: Urea-PACS-System\\n\\nAddress:\\nhttp://192.168.4.1:3000\\nhttp://urea.pacs:3000\\n\\n\\x1D\\x56\\x00" | sudo tee /dev/usb/lp0 > /dev/null 2>/dev/null || echo "📋 Printer not available"
-    
-    # Wait for server process
+    # Wait for server process  
     wait $SERVER_PID
     
 else

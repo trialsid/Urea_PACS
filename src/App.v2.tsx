@@ -44,6 +44,32 @@ function AppV2() {
   // Toast notifications
   const { addToast, ToastContainer } = useToast();
 
+  // Time synchronization
+  const syncTimeWithServer = async () => {
+    try {
+      const clientTimestamp = new Date().toISOString();
+      const response = await fetch('/api/sync-time', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timestamp: clientTimestamp })
+      });
+      
+      const data = await response.json();
+      if (data.synced && data.timeDiffMinutes > 5) {
+        addToast({
+          type: 'success',
+          title: 'Time Synchronized',
+          message: `Device time adjusted by ${data.timeDiffMinutes} minutes`,
+          duration: 5000
+        });
+        console.log('📱 Time sync:', data.message);
+      }
+    } catch (error) {
+      console.warn('Time sync failed:', error);
+      // Don't show error toast - this is optional functionality
+    }
+  };
+
   // Smart state update functions
   const addNewFarmer = (farmer: any) => {
     setAllFarmers(prev => {
@@ -92,12 +118,16 @@ function AppV2() {
     enabled: backendStatus === 'online' && currentView !== 'new-order'
   });
 
-  // Check backend status and load data on app load
+  // Check backend status, sync time, and load data on app load
   useEffect(() => {
     const checkBackend = async () => {
       try {
         await api.healthCheck();
         setBackendStatus('online');
+        
+        // Sync time with server on first load
+        await syncTimeWithServer();
+        
         await loadDashboardData();
       } catch {
         setBackendStatus('offline');

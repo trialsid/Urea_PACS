@@ -11,16 +11,80 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Client connection tracking middleware  
+app.use((req: Request, res: Response, next) => {
+  const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+  
+  // Skip tracking for localhost connections (Pi itself)
+  if (clientIP !== '127.0.0.1' && clientIP !== '::1' && !clientIP.includes('localhost')) {
+    if (!connectedClients.has(clientIP)) {
+      connectedClients.add(clientIP);
+      clientConnectionCount++;
+      
+      console.log(`📱 New client connected: ${clientIP} (#${clientConnectionCount})`);
+      
+      // Print basic connection message (time sync info will be printed separately if needed)
+      printClientConnection(clientIP, clientConnectionCount);
+    }
+  }
+  
+  next();
+});
+
 // Serve static files from the React build
 app.use(express.static(path.join(__dirname, '../../dist')));
 
 // Initialize thermal printer
 const thermalPrinter = new PACSReceiptPrinter();
 
+// Time synchronization variables
+let timeOffset = 0; // Milliseconds to add to server time
+let isTimeSynced = false; // Has time been synced with a client device
+
+// Client connection tracking
+const connectedClients = new Set<string>(); // Track unique IP addresses
+let clientConnectionCount = 0;
+
 // Aadhaar validation function
 const validateAadhaar = (aadhaar: string): boolean => {
   // Basic Aadhaar validation: 12 digits
   return /^\d{12}$/.test(aadhaar);
+};
+
+// Thermal print function for client connections
+const printClientConnection = (clientIP: string, connectionNumber: number, timeSyncInfo?: { synced: boolean; diffMinutes?: number }) => {
+  try {
+    let message = `CLIENT CONNECTED #${connectionNumber}\\nIP: ${clientIP}\\n`;
+    
+    // Only show time info if we have meaningful sync information
+    if (timeSyncInfo) {
+      if (timeSyncInfo.synced && timeSyncInfo.diffMinutes && timeSyncInfo.diffMinutes > 5) {
+        message += `Time: SYNCED (+${timeSyncInfo.diffMinutes} min)\\n`;
+      } else if (timeSyncInfo.synced) {
+        message += `Time: Already synced\\n`;
+      } else {
+        message += `Time: OK\\n`;
+      }
+    }
+    // Don't show "Time: Checking..." - just skip time info if not available
+    
+    message += `Ready for orders\\n`;
+    
+    // ESC/POS commands for thermal printing with proper paper cut
+    // Use echo -e instead of printf for better ESC/POS handling
+    const escPos = `\\x1B\\x21\\x10${message}\\x1B\\x21\\x00\\n\\x1D\\x56\\x41\\x03`;
+    
+    // Print to thermal printer using echo -e for proper ESC/POS
+    require('child_process').exec(`echo -e "${escPos}" | sudo tee /dev/usb/lp0 > /dev/null 2>&1`, (error: any) => {
+      if (error) {
+        console.log('📋 Thermal printer not available for connection message');
+      } else {
+        console.log(`🖨️  Printed connection message for ${clientIP}`);
+      }
+    });
+  } catch (error) {
+    console.warn('Failed to print client connection message:', error);
+  }
 };
 
 // API Routes
@@ -111,9 +175,10 @@ app.post('/api/farmer', (req: Request, res: Response) => {
   );
 });
 
-// Helper function to get current Indian time as ISO string
+// Helper function to get current Indian time as ISO string (with client sync adjustment)
 const getIndianTimeISO = (): string => {
-  const indianTime = new Date().toLocaleString('en-CA', {
+  const adjustedTime = new Date(Date.now() + timeOffset);
+  const indianTime = adjustedTime.toLocaleString('en-CA', {
     timeZone: 'Asia/Kolkata',
     year: 'numeric',
     month: '2-digit',
@@ -231,9 +296,86 @@ app.get('/api', (req: Request, res: Response) => {
   });
 });
 
+// Time synchronization endpoint
+app.post('/api/sync-time', (req: Request, res: Response) => {
+  const { timestamp: clientTimestamp } = req.body;
+  
+  if (!clientTimestamp) {
+    return res.status(400).json({ error: 'Client timestamp is required' });
+  }
+  
+  try {
+    const clientTime = new Date(clientTimestamp);
+    const serverTime = new Date();
+    const timeDiffMs = clientTime.getTime() - serverTime.getTime();
+    const timeDiffMinutes = Math.abs(timeDiffMs) / (1000 * 60);
+    
+    // Validate client time is reasonable (not in future/past by more than 1 day)
+    const dayInMs = 24 * 60 * 60 * 1000;
+    if (Math.abs(timeDiffMs) > dayInMs) {
+      return res.json({
+        synced: false,
+        message: 'Client time appears invalid',
+        serverTime: serverTime.toISOString(),
+        timeDiffMinutes: Math.round(timeDiffMinutes)
+      });
+    }
+    
+    // If time not yet synced and difference is significant (>5 minutes)
+    if (!isTimeSynced && timeDiffMinutes > 5) {
+      timeOffset = timeDiffMs;
+      isTimeSynced = true;
+      
+      console.log(`📱 Time synced with client device`);
+      console.log(`   Server time: ${serverTime.toISOString()}`);
+      console.log(`   Client time: ${clientTime.toISOString()}`);
+      console.log(`   Offset: ${Math.round(timeDiffMinutes)} minutes`);
+      
+      // Print time sync info to thermal printer
+      const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+      if (clientIP !== '127.0.0.1' && clientIP !== '::1' && !clientIP.includes('localhost')) {
+        const connectionNumber = Array.from(connectedClients).indexOf(clientIP) + 1;
+        if (connectionNumber > 0) {
+          printClientConnection(clientIP, connectionNumber, { 
+            synced: true, 
+            diffMinutes: Math.round(timeDiffMinutes) 
+          });
+        }
+      }
+      
+      return res.json({
+        synced: true,
+        message: `Time synchronized (${Math.round(timeDiffMinutes)} minutes adjustment)`,
+        serverTime: serverTime.toISOString(),
+        clientTime: clientTime.toISOString(),
+        adjustedTime: getIndianTimeISO(),
+        timeDiffMinutes: Math.round(timeDiffMinutes)
+      });
+    }
+    
+    // Time already synced or difference is small
+    res.json({
+      synced: isTimeSynced,
+      message: isTimeSynced ? 'Time already synchronized' : 'Time difference acceptable',
+      serverTime: serverTime.toISOString(),
+      adjustedTime: getIndianTimeISO(),
+      timeDiffMinutes: Math.round(timeDiffMinutes)
+    });
+    
+  } catch (error) {
+    res.status(400).json({ error: 'Invalid timestamp format' });
+  }
+});
+
 // Health check
 app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    adjustedTimestamp: getIndianTimeISO(),
+    timeSynced: isTimeSynced,
+    timeOffset: timeOffset
+  });
 });
 
 // Get counts for real-time change detection
@@ -511,6 +653,7 @@ const startServer = async () => {
       console.log(`📊 Database initialized and ready`);
       console.log(`🔄 Server is running and waiting for requests...`);
       console.log(`💡 Press Ctrl+C to stop the server`);
+      console.log(`✅ Client connection printing enabled (READY message already printed)`)
     });
 
     // Handle server errors
