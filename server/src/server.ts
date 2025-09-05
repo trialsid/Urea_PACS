@@ -54,28 +54,48 @@ const validateAadhaar = (aadhaar: string): boolean => {
 // Thermal print function for client connections
 const printClientConnection = (clientIP: string, connectionNumber: number, timeSyncInfo?: { synced: boolean; diffMinutes?: number }) => {
   try {
-    let message = `CLIENT CONNECTED #${connectionNumber}\\nIP: ${clientIP}\\n`;
+    // Build message text (plain text, no ESC/POS commands yet)
+    let messageText = `CLIENT CONNECTED #${connectionNumber}\nIP: ${clientIP}\n`;
     
     // Only show time info if we have meaningful sync information
     if (timeSyncInfo) {
       if (timeSyncInfo.synced && timeSyncInfo.diffMinutes && timeSyncInfo.diffMinutes > 5) {
-        message += `Time: SYNCED (+${timeSyncInfo.diffMinutes} min)\\n`;
+        messageText += `Time: SYNCED (+${timeSyncInfo.diffMinutes} min)\n`;
       } else if (timeSyncInfo.synced) {
-        message += `Time: Already synced\\n`;
+        messageText += `Time: Already synced\n`;
       } else {
-        message += `Time: OK\\n`;
+        messageText += `Time: OK\n`;
       }
     }
-    // Don't show "Time: Checking..." - just skip time info if not available
     
-    message += `Ready for orders\\n`;
+    messageText += `Ready for orders\n`;
     
-    // ESC/POS commands for thermal printing with proper paper cut
-    // Use echo -e instead of printf for better ESC/POS handling
-    const escPos = `\\x1B\\x21\\x10${message}\\x1B\\x21\\x00\\n\\x1D\\x56\\x41\\x03`;
+    // Use the same approach as thermal receipt printing - write binary data directly
+    const fs = require('fs');
+    const path = require('path');
     
-    // Print to thermal printer using echo -e for proper ESC/POS
-    require('child_process').exec(`echo -e "${escPos}" | sudo tee /dev/usb/lp0 > /dev/null 2>&1`, (error: any) => {
+    // Create ESC/POS binary data (same as thermal printer class)
+    const bold_on = Buffer.from([0x1B, 0x21, 0x10]);      // Bold text on
+    const bold_off = Buffer.from([0x1B, 0x21, 0x00]);     // Reset formatting
+    const paper_cut = Buffer.from([0x1D, 0x56, 0x00]);    // Paper cut (same as READY)
+    const newline = Buffer.from('\n');
+    
+    // Build the complete print data
+    const textBuffer = Buffer.from(messageText, 'utf8');
+    const printData = Buffer.concat([
+      bold_on,
+      textBuffer, 
+      bold_off,
+      newline,
+      paper_cut
+    ]);
+    
+    // Write to temporary file and send to printer
+    const tempFile = '/tmp/client_receipt.bin';
+    fs.writeFileSync(tempFile, printData);
+    
+    // Send to thermal printer
+    require('child_process').exec(`sudo cp ${tempFile} /dev/usb/lp0 && rm ${tempFile}`, (error: any) => {
       if (error) {
         console.log('📋 Thermal printer not available for connection message');
       } else {
@@ -569,14 +589,14 @@ app.get('/api/preview/thermal-receipt/:orderId', (req: Request, res: Response) =
           customerService: "1800-123-4567"
         };
 
-        // Generate preview text for the ESC/POS receipt
-        const currentDate = new Date().toLocaleDateString('en-GB', {
+        // Generate preview text for the ESC/POS receipt using order's original date/time
+        const orderDate = new Date(order.created_at).toLocaleDateString('en-GB', {
           day: '2-digit',
           month: '2-digit', 
           year: 'numeric'
         });
         
-        const currentTime = new Date().toLocaleTimeString('en-US', {
+        const orderTime = new Date(order.created_at).toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit',
           hour12: true
@@ -594,7 +614,7 @@ Item               Qty x Rate     Amount
 +----------------------------------------+
 ${receiptData.items[0].description}          ${receiptData.items[0].quantity} x ${receiptData.items[0].rate}       ${receiptData.items[0].total}
 +========================================+
-Date: ${currentDate}              Time: ${currentTime}
+Date: ${orderDate}              Time: ${orderTime}
    * Thank you for your cooperation! *
 +========================================+`;
         

@@ -107,14 +107,22 @@ class ThermalPrinter {
 
     // Generate PACS Receipt using ESC/POS commands
     generateSimplePACSReceipt(data) {
-        const currentDate = moment().format('DD-MM-YYYY');
-        const currentTime = moment().format('hh:mm A');
+        // Use order's timestamp if provided, otherwise current time
+        let orderDate, orderTime;
+        if (data.created_at) {
+            const orderDateTime = moment(data.created_at);
+            orderDate = orderDateTime.format('DD-MM-YYYY');
+            orderTime = orderDateTime.format('hh:mm A');
+        } else {
+            orderDate = moment().format('DD-MM-YYYY');
+            orderTime = moment().format('hh:mm A');
+        }
         
         const orgName = data.organization || "PACS-AIZA";
         const tokenNum = data.tokenNumber || "142";
         const farmerName = (data.farmer && data.farmer.name) ? data.farmer.name : "Unknown";
         
-        return this.generateDecorativeStyleESCPOS(orgName, tokenNum, farmerName, data, currentDate, currentTime);
+        return this.generateDecorativeStyleESCPOS(orgName, tokenNum, farmerName, data, orderDate, orderTime);
     }
 
 
@@ -223,6 +231,7 @@ class PACSReceiptPrinter {
         const receiptData = {
             organization: "PACS-AIZA", 
             tokenNumber: order.id.toString(),
+            created_at: order.created_at,  // Pass order's original timestamp
             items: [{
                 description: "Urea (45kg)",
                 quantity: order.quantity,
