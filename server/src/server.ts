@@ -465,6 +465,148 @@ app.get('/api/farmers/since/:lastCount', (req: Request, res: Response) => {
   });
 });
 
+// Daily Sales Summary API
+app.get('/api/reports/today-summary', (req: Request, res: Response) => {
+  // Get today's date in Indian timezone
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD format
+  const startOfDay = `${today} 00:00:00`;
+  const endOfDay = `${today} 23:59:59`;
+  
+  // Run multiple queries to get today's summary
+  const queries = [
+    // Total orders today
+    new Promise((resolve, reject) => {
+      db.get(
+        `SELECT COUNT(*) as totalOrders FROM orders WHERE DATE(created_at) = DATE(?)`,
+        [today],
+        (err, row: any) => {
+          if (err) reject(err);
+          else resolve(row.totalOrders || 0);
+        }
+      );
+    }),
+    
+    // Total bags today
+    new Promise((resolve, reject) => {
+      db.get(
+        `SELECT COALESCE(SUM(quantity), 0) as totalBags FROM orders WHERE DATE(created_at) = DATE(?)`,
+        [today],
+        (err, row: any) => {
+          if (err) reject(err);
+          else resolve(row.totalBags || 0);
+        }
+      );
+    }),
+    
+    // Total revenue today
+    new Promise((resolve, reject) => {
+      db.get(
+        `SELECT COALESCE(SUM(total_amount), 0) as totalRevenue FROM orders WHERE DATE(created_at) = DATE(?)`,
+        [today],
+        (err, row: any) => {
+          if (err) reject(err);
+          else resolve(row.totalRevenue || 0);
+        }
+      );
+    })
+  ];
+  
+  Promise.all(queries)
+    .then(([totalOrders, totalBags, totalRevenue]) => {
+      const orders = Number(totalOrders);
+      const bags = Number(totalBags);
+      const revenue = Number(totalRevenue);
+      const avgPerOrder = orders > 0 ? Math.round(revenue / orders) : 0;
+      const avgBags = orders > 0 ? (bags / orders).toFixed(1) : '0.0';
+      
+      res.json({
+        date: today,
+        totalOrders: orders,
+        totalBags: bags,
+        totalRevenue: revenue,
+        avgPerOrder,
+        avgBags: parseFloat(avgBags)
+      });
+    })
+    .catch((err) => {
+      console.error('Daily summary error:', err);
+      res.status(500).json({ error: 'Database error' });
+    });
+});
+
+// Print daily summary
+app.post('/api/reports/print-daily-summary', (req: Request, res: Response) => {
+  // Get today's date in Indian timezone
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  
+  // Run the same queries as above
+  const queries = [
+    new Promise((resolve, reject) => {
+      db.get(
+        `SELECT COUNT(*) as totalOrders FROM orders WHERE DATE(created_at) = DATE(?)`,
+        [today],
+        (err, row: any) => {
+          if (err) reject(err);
+          else resolve(row.totalOrders || 0);
+        }
+      );
+    }),
+    
+    new Promise((resolve, reject) => {
+      db.get(
+        `SELECT COALESCE(SUM(quantity), 0) as totalBags FROM orders WHERE DATE(created_at) = DATE(?)`,
+        [today],
+        (err, row: any) => {
+          if (err) reject(err);
+          else resolve(row.totalBags || 0);
+        }
+      );
+    }),
+    
+    new Promise((resolve, reject) => {
+      db.get(
+        `SELECT COALESCE(SUM(total_amount), 0) as totalRevenue FROM orders WHERE DATE(created_at) = DATE(?)`,
+        [today],
+        (err, row: any) => {
+          if (err) reject(err);
+          else resolve(row.totalRevenue || 0);
+        }
+      );
+    })
+  ];
+  
+  Promise.all(queries)
+    .then(([totalOrders, totalBags, totalRevenue]) => {
+      const orders = Number(totalOrders);
+      const bags = Number(totalBags);
+      const revenue = Number(totalRevenue);
+      const avgPerOrder = orders > 0 ? Math.round(revenue / orders) : 0;
+      const avgBags = orders > 0 ? (bags / orders).toFixed(1) : '0.0';
+      
+      const summaryData = {
+        date: today,
+        totalOrders: orders,
+        totalBags: bags,
+        totalRevenue: revenue,
+        avgPerOrder,
+        avgBags: parseFloat(avgBags)
+      };
+      
+      // Print using thermal printer
+      try {
+        (thermalPrinter as any).printDailySummary(summaryData);
+        res.json({ success: true, message: 'Daily summary printed successfully' });
+      } catch (error) {
+        console.error('Thermal print error:', error);
+        res.status(500).json({ error: 'Failed to print daily summary' });
+      }
+    })
+    .catch((err) => {
+      console.error('Daily summary print error:', err);
+      res.status(500).json({ error: 'Database error' });
+    });
+});
+
 // Thermal Printer Endpoints
 
 // Get available receipt styles
