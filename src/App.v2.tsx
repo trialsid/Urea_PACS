@@ -11,12 +11,13 @@ import OrdersList from './components/OrdersList';
 import FarmerDetail from './components/FarmerDetail';
 import OrderDetail from './components/OrderDetail';
 import ThermalReceiptPreview from './components/ThermalReceiptPreview';
+import DailySummary from './components/DailySummary';
 import { useToast } from './components/ToastContainer';
 import { useRealTimeUpdates } from './hooks/useRealTimeUpdates';
 import { isToday, getCurrentIndianDateTime } from './utils/dateTime';
 
 function AppV2() {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'new-order' | 'farmers' | 'orders' | 'farmer-detail' | 'order-detail'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'new-order' | 'farmers' | 'orders' | 'farmer-detail' | 'order-detail' | 'daily-summary'>('dashboard');
   const [selectedFarmer, setSelectedFarmer] = useState<any | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [showReprintModal, setShowReprintModal] = useState(false);
@@ -279,7 +280,7 @@ function AppV2() {
     setCurrentView('new-order');
   };
 
-  const handleNavigate = (view: 'new-order' | 'farmers' | 'orders') => {
+  const handleNavigate = (view: 'new-order' | 'farmers' | 'orders' | 'daily-summary') => {
     if (view === 'new-order') {
       setCurrentView('new-order');
       setAppState({
@@ -658,6 +659,10 @@ function AppV2() {
               setCurrentView('farmer-detail');
             } : undefined}
           />
+        )}
+
+        {currentView === 'daily-summary' && (
+          <DailySummary onNavigate={setCurrentView} />
         )}
 
         {currentView === 'new-order' && (

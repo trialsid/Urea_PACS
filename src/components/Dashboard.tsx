@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface DashboardProps {
-  onNavigate: (view: 'new-order' | 'farmers' | 'orders') => void;
+  onNavigate: (view: 'new-order' | 'farmers' | 'orders' | 'daily-summary') => void;
   stats?: {
     todayOrders: number;
     totalFarmers: number;
@@ -171,7 +171,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, stats }) => {
           </button>
           
           <button 
-            onClick={() => onNavigate('orders')}
+            onClick={() => onNavigate('daily-summary')}
             className="p-3 text-left border border-neutral-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
           >
             <div className="text-xs sm:text-sm font-medium text-neutral-900">Today's Report</div>
